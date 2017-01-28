@@ -79,13 +79,22 @@ public class RuntimeEnvironment {
    */
   @Deprecated
   public static PackageManager getPackageManager() {
-    return (PackageManager) packageManager;
+    return application.getPackageManager();
   }
 
+  /**
+   * @deprecated Use {@link org.robolectric.shadows.ShadowPackageManager}]
+   */
+  @Deprecated
   public static RobolectricPackageManager getRobolectricPackageManager() {
     return packageManager;
   }
 
+  /**
+   * @deprecated PackageManager is now shadowed, see {@link org.robolectric.shadows.ShadowPackageManager}]
+   * For custom implementations, write a shadow that extends {@link org.robolectric.shadows.ShadowApplicationPackageManager}
+   */
+  @Deprecated
   public static void setRobolectricPackageManager(RobolectricPackageManager newPackageManager) {
     if (packageManager != null) {
       packageManager.reset();

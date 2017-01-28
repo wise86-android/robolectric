@@ -78,4 +78,14 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public ResolveInfo resolveActivity(Intent intent, int flags) {
     return RuntimeEnvironment.getRobolectricPackageManager().resolveActivity(intent, flags);
   }
+
+  @Implementation
+  public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
+    return RuntimeEnvironment.getRobolectricPackageManager().getPackageInfo(packageName, flags);
+  }
+
+  @Implementation
+  public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().queryIntentServices(intent, flags);
+  }
 }
