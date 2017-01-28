@@ -58,7 +58,7 @@ public class DefaultPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     rpm.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
 
     List<String> allPackageNames = new LinkedList<>();
     for (PackageInstaller.SessionInfo session : allSessions) {
@@ -77,7 +77,7 @@ public class DefaultPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     rpm.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
 
     assertThat(allSessions).hasSameSizeAs(rpm.getInstalledPackages(0));
   }
@@ -350,11 +350,11 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldReturnProviderInfos() throws Exception {
-    ProviderInfo packageInfo1 = RuntimeEnvironment.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
+    ProviderInfo packageInfo1 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
     assertThat(packageInfo1.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo1.authority).isEqualTo("org.robolectric.authority1");
 
-    ProviderInfo packageInfo2 = RuntimeEnvironment.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
+    ProviderInfo packageInfo2 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
     assertThat(packageInfo2.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo2.authority).isEqualTo("org.robolectric.authority2");
   }
@@ -362,7 +362,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldPopulatePermissionsInProviderInfos() throws Exception {
-    ProviderInfo providerInfo = RuntimeEnvironment.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
+    ProviderInfo providerInfo = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
     assertThat(providerInfo.authority).isEqualTo("org.robolectric.authority2");
 
     assertThat(providerInfo.readPermission).isEqualTo("READ_PERMISSION");
@@ -711,7 +711,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetApplicationEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.getPackageManager();
+    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
 
     assertThat(packageManager.getApplicationEnabledSetting("org.robolectric")).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
 
@@ -723,7 +723,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetComponentEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.getPackageManager();
+    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
 
     ComponentName componentName = new ComponentName(RuntimeEnvironment.application, "org.robolectric.component");
     assertThat(packageManager.getComponentEnabledSetting(componentName)).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
@@ -740,7 +740,7 @@ public class DefaultPackageManagerTest {
   public void getActivityMetaData() throws Exception {
     Activity activity = setupActivity(ActivityWithMetadata.class);
 
-    ActivityInfo activityInfo = RuntimeEnvironment.getPackageManager().getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
+    ActivityInfo activityInfo = RuntimeEnvironment.application.getPackageManager().getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
     assertThat(activityInfo.metaData.get("someName")).isEqualTo("someValue");
   }
 
@@ -799,20 +799,20 @@ public class DefaultPackageManagerTest {
 
   @Test
   public void getNameForUid() {
-    assertThat(RuntimeEnvironment.getPackageManager().getNameForUid(10)).isNull();
+    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isNull();
 
     rpm.setNameForUid(10, "a_name");
 
-    assertThat(RuntimeEnvironment.getPackageManager().getNameForUid(10)).isEqualTo("a_name");
+    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isEqualTo("a_name");
   }
 
   @Test
   public void getPackagesForUid() {
-    assertThat(RuntimeEnvironment.getPackageManager().getPackagesForUid(10)).isNull();
+    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).isNull();
 
     rpm.setPackagesForUid(10, new String[] {"a_name"});
 
-    assertThat(RuntimeEnvironment.getPackageManager().getPackagesForUid(10)).containsExactly("a_name");
+    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).containsExactly("a_name");
   }
 
   /////////////////////////////
