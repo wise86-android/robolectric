@@ -136,7 +136,7 @@ public class ParallelUniverse implements ParallelUniverseInterface {
         throw new RuntimeException(e);
       }
 
-      addManifestActivitiesToPackageManager(appManifest, application);
+      addManifestActivitiesToPackageManager(appManifest);
 
       Resources appResources = application.getResources();
       ReflectionHelpers.setField(loadedApk, "mResources", appResources);
@@ -160,11 +160,11 @@ public class ParallelUniverse implements ParallelUniverseInterface {
     packageManager.addManifest(appManifest, labelRes);
   }
 
-  private void addManifestActivitiesToPackageManager(AndroidManifest appManifest, Application application) {
+  private void addManifestActivitiesToPackageManager(AndroidManifest appManifest) {
     if (appManifest != null) {
       Map<String,ActivityData> activityDatas = appManifest.getActivityDatas();
 
-      RobolectricPackageManager packageManager = (RobolectricPackageManager) application.getPackageManager();
+      RobolectricPackageManager packageManager = RuntimeEnvironment.getRobolectricPackageManager();
 
       for (ActivityData data : activityDatas.values()) {
         String name = data.getName();
