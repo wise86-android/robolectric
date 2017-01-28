@@ -199,7 +199,7 @@ public class RobolectricTest {
     }
     assertThat(order).as("reset order").containsExactly("shadowProvider", "packageManager");
     assertThat(RuntimeEnvironment.application).as("app after reset").isNull();
-    assertThat(RuntimeEnvironment.getPackageManager()).as("packageManager after reset").isNull();
+    assertThat(RuntimeEnvironment.application.getPackageManager()).as("packageManager after reset").isNull();
     assertThat(RuntimeEnvironment.getActivityThread()).as("activityThread after reset").isNull();
   }
   

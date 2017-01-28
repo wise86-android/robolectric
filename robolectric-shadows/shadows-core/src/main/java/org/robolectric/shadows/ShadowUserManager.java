@@ -1,5 +1,7 @@
 package org.robolectric.shadows;
 
+import android.annotation.UserIdInt;
+import android.content.pm.UserInfo;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -25,6 +27,11 @@ public class ShadowUserManager {
 
   @Implementation(minSdk = LOLLIPOP)
   public List<UserHandle> getUserProfiles(){
+    return Collections.emptyList();
+  }
+
+  @Implementation
+  public List<UserInfo> getProfiles(int userHandle) {
     return Collections.emptyList();
   }
 
