@@ -100,6 +100,26 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public ActivityInfo getReceiverInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+    return RuntimeEnvironment.getRobolectricPackageManager().getReceiverInfo(className, flags);
+  }
+
+  @Implementation
+  public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().queryBroadcastReceivers(intent, flags);
+  }
+
+  @Implementation
+  public ResolveInfo resolveService(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().resolveService(intent, flags);
+  }
+
+  @Implementation
+  public ServiceInfo getServiceInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+    return RuntimeEnvironment.getRobolectricPackageManager().getServiceInfo(className, flags);
+  }
+
+  @Implementation
   public List<ApplicationInfo> getInstalledApplications(int flags) {
     return null;
   }
@@ -119,4 +139,13 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     return false;
   }
 
+  @Implementation
+  public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
+
+  }
+
+  @Implementation
+  public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
+
+  }
 }
