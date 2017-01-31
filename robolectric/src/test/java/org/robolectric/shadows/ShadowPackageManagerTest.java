@@ -34,8 +34,7 @@ import static org.junit.Assert.*;
 import static org.robolectric.Robolectric.setupActivity;
 import static org.robolectric.Shadows.shadowOf;
 
-@RunWith(RobolectricTestRunner.class)
-@Config(sdk = Config.ALL_SDKS)
+@RunWith(TestRunners.MultiApiSelfTest.class)
 public class ShadowPackageManagerTest {
 
   private static final String TEST_PACKAGE_NAME = "com.some.other.package";
@@ -44,10 +43,12 @@ public class ShadowPackageManagerTest {
   private ShadowPackageManager shadowPackageManager;
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  private PackageManager packageManager;
 
   @Before
-  public void testSometyjhing() {
+  public void setUp() {
     shadowPackageManager = shadowOf(RuntimeEnvironment.application.getPackageManager());
+    packageManager = RuntimeEnvironment.application.getPackageManager();
   }
 
   @Test
@@ -60,7 +61,7 @@ public class ShadowPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     shadowPackageManager.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
 
     List<String> allPackageNames = new LinkedList<>();
     for (PackageInstaller.SessionInfo session : allSessions) {
@@ -80,7 +81,7 @@ public class ShadowPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     shadowPackageManager.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
 
     assertThat(allSessions).hasSameSizeAs(shadowPackageManager.getInstalledPackages(0));
   }
@@ -353,11 +354,11 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldReturnProviderInfos() throws Exception {
-    ProviderInfo packageInfo1 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
+    ProviderInfo packageInfo1 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
     assertThat(packageInfo1.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo1.authority).isEqualTo("org.robolectric.authority1");
 
-    ProviderInfo packageInfo2 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
+    ProviderInfo packageInfo2 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
     assertThat(packageInfo2.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo2.authority).isEqualTo("org.robolectric.authority2");
   }
@@ -365,7 +366,7 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldPopulatePermissionsInProviderInfos() throws Exception {
-    ProviderInfo providerInfo = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
+    ProviderInfo providerInfo = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
     assertThat(providerInfo.authority).isEqualTo("org.robolectric.authority2");
 
     assertThat(providerInfo.readPermission).isEqualTo("READ_PERMISSION");
@@ -593,7 +594,7 @@ public class ShadowPackageManagerTest {
   public void shouldAssignTheAppMetaDataFromTheManifest() throws Exception {
     ShadowApplication app = ShadowApplication.getInstance();
     String packageName = app.getAppManifest().getPackageName();
-    ApplicationInfo info = RuntimeEnvironment.application.getPackageManager().getApplicationInfo(packageName, 0);
+    ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
     Bundle meta = info.metaData;
 
     Object metaValue = meta.get("org.robolectric.metaName1");
@@ -714,8 +715,6 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetApplicationEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
-
     assertThat(packageManager.getApplicationEnabledSetting("org.robolectric")).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
 
     packageManager.setApplicationEnabledSetting("org.robolectric", PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0);
@@ -726,8 +725,6 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetComponentEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
-
     ComponentName componentName = new ComponentName(RuntimeEnvironment.application, "org.robolectric.component");
     assertThat(packageManager.getComponentEnabledSetting(componentName)).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
 
@@ -743,7 +740,7 @@ public class ShadowPackageManagerTest {
   public void getActivityMetaData() throws Exception {
     Activity activity = setupActivity(DefaultPackageManagerTest.ActivityWithMetadata.class);
 
-    ActivityInfo activityInfo = RuntimeEnvironment.application.getPackageManager().getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
+    ActivityInfo activityInfo = packageManager.getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
     assertThat(activityInfo.metaData.get("someName")).isEqualTo("someValue");
   }
 
@@ -802,20 +799,31 @@ public class ShadowPackageManagerTest {
 
   @Test
   public void getNameForUid() {
-    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isNull();
+    assertThat(packageManager.getNameForUid(10)).isNull();
 
     shadowPackageManager.setNameForUid(10, "a_name");
 
-    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isEqualTo("a_name");
+    assertThat(packageManager.getNameForUid(10)).isEqualTo("a_name");
   }
 
   @Test
   public void getPackagesForUid() {
-    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).isNull();
+    assertThat(packageManager.getPackagesForUid(10)).isNull();
 
     shadowPackageManager.setPackagesForUid(10, new String[] {"a_name"});
 
-    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).containsExactly("a_name");
+    assertThat(packageManager.getPackagesForUid(10)).containsExactly("a_name");
+  }
+
+  @Test
+  public void getResourcesForApplication_currentApplication() throws Exception {
+    assertThat(packageManager.getResourcesForApplication("org.robolectric").getString(R.string.app_name))
+        .isEqualTo(RuntimeEnvironment.application.getString(R.string.app_name));
+  }
+
+  @Test(expected = PackageManager.NameNotFoundException.class)
+  public void getResourcesForApplication_unknownPackage() throws Exception {
+    packageManager.getResourcesForApplication("non.existent.package");
   }
 
   /////////////////////////////
