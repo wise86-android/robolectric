@@ -1,9 +1,11 @@
 package org.robolectric.shadows;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.*;
+import android.content.res.Resources;
 import android.os.Build;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Implementation;
@@ -117,6 +119,14 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   @Implementation
   public ServiceInfo getServiceInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
     return RuntimeEnvironment.getRobolectricPackageManager().getServiceInfo(className, flags);
+  }
+
+  @Implementation
+  public Resources getResourcesForApplication(@NonNull ApplicationInfo app) throws PackageManager.NameNotFoundException {
+    if (app.packageName.equals(RuntimeEnvironment.application.getPackageName())) {
+      return RuntimeEnvironment.application.getResources();
+    }
+    throw new PackageManager.NameNotFoundException(app.packageName);
   }
 
   @Implementation
