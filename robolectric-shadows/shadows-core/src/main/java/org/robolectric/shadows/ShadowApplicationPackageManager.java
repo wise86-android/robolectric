@@ -88,4 +88,35 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
     return RuntimeEnvironment.getRobolectricPackageManager().queryIntentServices(intent, flags);
   }
+
+  @Implementation
+  public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().queryIntentActivities(intent, flags);
+  }
+
+  @Implementation
+  public int checkPermission(String permName, String pkgName) {
+    return RuntimeEnvironment.getRobolectricPackageManager().checkPermission(permName, pkgName);
+  }
+
+  @Implementation
+  public List<ApplicationInfo> getInstalledApplications(int flags) {
+    return null;
+  }
+
+  @Implementation
+  public String getInstallerPackageName(String packageName) {
+    return null;
+  }
+
+  @Implementation
+  public PermissionInfo getPermissionInfo(String name, int flags) throws PackageManager.NameNotFoundException {
+    return null;
+  }
+
+  @Implementation
+  public boolean shouldShowRequestPermissionRationale(String permission) {
+    return false;
+  }
+
 }
