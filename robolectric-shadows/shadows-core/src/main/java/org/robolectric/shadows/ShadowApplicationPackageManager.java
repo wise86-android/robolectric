@@ -158,4 +158,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
 
   }
+
+  @Implementation
+  public void setInstallerPackageName(String targetPackage, String installerPackageName) {
+
+  }
 }
