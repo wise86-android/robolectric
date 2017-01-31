@@ -146,7 +146,7 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public boolean shouldShowRequestPermissionRationale(String permission) {
-    return false;
+    return permissionRationalMap.containsKey(permission) ? permissionRationalMap.get(permission) : false;
   }
 
   @Implementation

@@ -11,10 +11,15 @@ import org.robolectric.annotation.Implements;
 import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.res.builder.RobolectricPackageManager;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Implements(PackageManager.class)
 public class ShadowPackageManager implements RobolectricPackageManager {
+
+  protected Map<String, Boolean> permissionRationalMap = new HashMap<>();
+
   @Override
   public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
     return RuntimeEnvironment.getRobolectricPackageManager().getPackageInfo(packageName, flags);
@@ -224,5 +229,9 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   @Override
   public PackageInfo getPackageArchiveInfo(String archiveFilePath, int flags) {
     return RuntimeEnvironment.getRobolectricPackageManager().getPackageArchiveInfo(archiveFilePath, flags);
+  }
+
+  public void setShouldShowRequestPermissionRationale(String permission, boolean show) {
+    permissionRationalMap.put(permission, show);
   }
 }
