@@ -88,4 +88,64 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
     return RuntimeEnvironment.getRobolectricPackageManager().queryIntentServices(intent, flags);
   }
+
+  @Implementation
+  public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().queryIntentActivities(intent, flags);
+  }
+
+  @Implementation
+  public int checkPermission(String permName, String pkgName) {
+    return RuntimeEnvironment.getRobolectricPackageManager().checkPermission(permName, pkgName);
+  }
+
+  @Implementation
+  public ActivityInfo getReceiverInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+    return RuntimeEnvironment.getRobolectricPackageManager().getReceiverInfo(className, flags);
+  }
+
+  @Implementation
+  public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().queryBroadcastReceivers(intent, flags);
+  }
+
+  @Implementation
+  public ResolveInfo resolveService(Intent intent, int flags) {
+    return RuntimeEnvironment.getRobolectricPackageManager().resolveService(intent, flags);
+  }
+
+  @Implementation
+  public ServiceInfo getServiceInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+    return RuntimeEnvironment.getRobolectricPackageManager().getServiceInfo(className, flags);
+  }
+
+  @Implementation
+  public List<ApplicationInfo> getInstalledApplications(int flags) {
+    return null;
+  }
+
+  @Implementation
+  public String getInstallerPackageName(String packageName) {
+    return null;
+  }
+
+  @Implementation
+  public PermissionInfo getPermissionInfo(String name, int flags) throws PackageManager.NameNotFoundException {
+    return null;
+  }
+
+  @Implementation
+  public boolean shouldShowRequestPermissionRationale(String permission) {
+    return false;
+  }
+
+  @Implementation
+  public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
+
+  }
+
+  @Implementation
+  public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
+
+  }
 }
