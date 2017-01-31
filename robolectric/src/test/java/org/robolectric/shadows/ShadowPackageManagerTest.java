@@ -1,5 +1,6 @@
 package org.robolectric.shadows;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -824,6 +825,15 @@ public class ShadowPackageManagerTest {
   @Test(expected = PackageManager.NameNotFoundException.class)
   public void getResourcesForApplication_unknownPackage() throws Exception {
     packageManager.getResourcesForApplication("non.existent.package");
+  }
+
+  @Test
+  public void shouldShowRequestPermissionRationale() {
+    assertThat(packageManager.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)).isFalse();
+
+    shadowPackageManager.setShouldShowRequestPermissionRationale(Manifest.permission.CAMERA, true);
+
+    assertThat(packageManager.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)).isTrue();
   }
 
   /////////////////////////////
