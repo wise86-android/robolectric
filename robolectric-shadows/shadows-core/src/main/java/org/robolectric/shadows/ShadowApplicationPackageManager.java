@@ -155,6 +155,14 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public void verifyPendingInstall(int id, int verificationCode) {
+    if (verificationResults.containsKey(id)) {
+      throw new IllegalStateException("Multiple verifications for id=" + id);
+    }
+    verificationResults.put(id, verificationCode);
+  }
+
+  @Implementation
   public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
 
   }

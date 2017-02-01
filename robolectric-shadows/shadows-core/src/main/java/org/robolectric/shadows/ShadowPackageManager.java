@@ -21,6 +21,8 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   protected Map<String, Boolean> permissionRationalMap = new HashMap<>();
   protected List<FeatureInfo> systemAvailableFeatures = new LinkedList<>();
+  private Map<String, PackageInfo> packageArchiveInfo = new HashMap<>();
+  protected final Map<Integer, Integer> verificationResults = new HashMap<>();
 
   @Override
   public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
@@ -230,7 +232,21 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   @Override
   public PackageInfo getPackageArchiveInfo(String archiveFilePath, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().getPackageArchiveInfo(archiveFilePath, flags);
+    return packageArchiveInfo.get(archiveFilePath);
+  }
+
+  public void setPackageArchiveInfo(String archiveFilePath, PackageInfo packageInfo) {
+    packageArchiveInfo.put(archiveFilePath, packageInfo);
+  }
+
+  public int getVerificationResult(int id) {
+    Integer result = verificationResults.get(id);
+    if (result == null) {
+      // 0 isn't a "valid" result, so we can check for the case when verification isn't
+      // called, if needed
+      return 0;
+    }
+    return result;
   }
 
   public void setShouldShowRequestPermissionRationale(String permission, boolean show) {

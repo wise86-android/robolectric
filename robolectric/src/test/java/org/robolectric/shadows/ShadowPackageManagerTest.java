@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import static android.content.pm.PackageManager.VERIFICATION_ALLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.robolectric.Robolectric.setupActivity;
@@ -850,6 +851,24 @@ public class ShadowPackageManagerTest {
     shadowPackageManager.clearSystemAvailableFeatures();
 
     assertThat(packageManager.getSystemAvailableFeatures()).isNull();
+  }
+
+  @Test
+  public void getPackageArchiveInfo() {
+    assertThat(packageManager.getPackageArchiveInfo("", 0)).isNull();
+
+    PackageInfo packageInfo = new PackageInfo();
+
+    shadowPackageManager.setPackageArchiveInfo("/some/path/to/an/apk", packageInfo);
+
+    assertThat(packageManager.getPackageArchiveInfo("/some/path/to/an/apk", 0)).isEqualTo(packageInfo);
+  }
+
+  @Test
+  public void verifyPendingInstall() {
+    packageManager.verifyPendingInstall(1234, VERIFICATION_ALLOW);
+
+    assertThat(shadowPackageManager.getVerificationResult(1234)).isEqualTo(VERIFICATION_ALLOW);
   }
 
   /////////////////////////////
