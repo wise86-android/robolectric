@@ -240,4 +240,8 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   public void addSystemAvailableFeature(FeatureInfo featureInfo) {
     systemAvailableFeatures.add(featureInfo);
   }
+
+  public void clearSystemAvailableFeatures() {
+    systemAvailableFeatures.clear();
+  }
 }
