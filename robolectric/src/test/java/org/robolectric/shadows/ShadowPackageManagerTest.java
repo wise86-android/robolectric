@@ -846,6 +846,10 @@ public class ShadowPackageManagerTest {
     shadowPackageManager.addSystemAvailableFeature(feature);
 
     assertThat(packageManager.getSystemAvailableFeatures()).contains(feature);
+
+    shadowPackageManager.clearSystemAvailableFeatures();
+
+    assertThat(packageManager.getSystemAvailableFeatures()).isNull();
   }
 
   /////////////////////////////
