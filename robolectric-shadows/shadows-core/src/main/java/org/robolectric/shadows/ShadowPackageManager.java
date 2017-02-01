@@ -12,6 +12,7 @@ import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.res.builder.RobolectricPackageManager;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import java.util.Map;
 public class ShadowPackageManager implements RobolectricPackageManager {
 
   protected Map<String, Boolean> permissionRationalMap = new HashMap<>();
+  protected List<FeatureInfo> systemAvailableFeatures = new LinkedList<>();
 
   @Override
   public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
@@ -233,5 +235,9 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   public void setShouldShowRequestPermissionRationale(String permission, boolean show) {
     permissionRationalMap.put(permission, show);
+  }
+
+  public void addSystemAvailableFeature(FeatureInfo featureInfo) {
+    systemAvailableFeatures.add(featureInfo);
   }
 }

@@ -150,6 +150,11 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public FeatureInfo[] getSystemAvailableFeatures() {
+    return systemAvailableFeatures.isEmpty() ? null : systemAvailableFeatures.toArray(new FeatureInfo[systemAvailableFeatures.size()]);
+  }
+
+  @Implementation
   public void freeStorageAndNotify(long freeStorageSize, IPackageDataObserver observer) {
 
   }

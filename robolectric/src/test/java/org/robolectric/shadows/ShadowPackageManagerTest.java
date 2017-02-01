@@ -836,6 +836,18 @@ public class ShadowPackageManagerTest {
     assertThat(packageManager.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)).isTrue();
   }
 
+  @Test
+  public void getSystemAvailableFeatures() {
+    assertThat(packageManager.getSystemAvailableFeatures()).isNull();
+
+    FeatureInfo feature = new FeatureInfo();
+    feature.reqGlEsVersion = 0x20000;
+    feature.flags = FeatureInfo.FLAG_REQUIRED;
+    shadowPackageManager.addSystemAvailableFeature(feature);
+
+    assertThat(packageManager.getSystemAvailableFeatures()).contains(feature);
+  }
+
   /////////////////////////////
 
   public AndroidManifest newConfigWith(String contents) throws IOException {
