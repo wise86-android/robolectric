@@ -39,6 +39,10 @@ import android.os.storage.VolumeInfo;
 
 import java.util.List;
 
+/**
+ * @deprecated use @{link ShadowPackageManager} instead.
+ */
+@Deprecated
 public class StubPackageManager extends PackageManager {
 
   @Override
