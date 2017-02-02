@@ -34,6 +34,10 @@ import java.util.TreeMap;
 
 import static android.os.Build.VERSION_CODES.N;
 
+/**
+ * @deprecated use @{link ShadowPackageManager} instead.
+ */
+@Deprecated
 public class DefaultPackageManager extends StubPackageManager implements RobolectricPackageManager {
 
   private Map<Integer, String> namesForUid = new HashMap<>();

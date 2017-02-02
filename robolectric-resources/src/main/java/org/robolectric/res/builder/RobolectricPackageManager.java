@@ -9,6 +9,10 @@ import org.robolectric.manifest.AndroidManifest;
 
 import java.util.List;
 
+/**
+ * @deprecated use @{link ShadowPackageManager} instead.
+ */
+@Deprecated
 public interface RobolectricPackageManager {
   PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException;
 

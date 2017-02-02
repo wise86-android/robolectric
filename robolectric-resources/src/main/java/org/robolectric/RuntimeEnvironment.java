@@ -79,7 +79,7 @@ public class RuntimeEnvironment {
    */
   @Deprecated
   public static PackageManager getPackageManager() {
-    return application.getPackageManager();
+    return (PackageManager) packageManager;
   }
 
   /**
