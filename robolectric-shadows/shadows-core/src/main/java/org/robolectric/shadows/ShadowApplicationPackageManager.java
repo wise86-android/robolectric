@@ -1,9 +1,11 @@
 package org.robolectric.shadows;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.*;
+import android.content.res.Resources;
 import android.os.Build;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Implementation;
@@ -120,6 +122,14 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public Resources getResourcesForApplication(@NonNull ApplicationInfo app) throws PackageManager.NameNotFoundException {
+    if (app.packageName.equals(RuntimeEnvironment.application.getPackageName())) {
+      return RuntimeEnvironment.application.getResources();
+    }
+    throw new PackageManager.NameNotFoundException(app.packageName);
+  }
+
+  @Implementation
   public List<ApplicationInfo> getInstalledApplications(int flags) {
     return null;
   }
@@ -136,7 +146,20 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public boolean shouldShowRequestPermissionRationale(String permission) {
-    return false;
+    return permissionRationalMap.containsKey(permission) ? permissionRationalMap.get(permission) : false;
+  }
+
+  @Implementation
+  public FeatureInfo[] getSystemAvailableFeatures() {
+    return systemAvailableFeatures.isEmpty() ? null : systemAvailableFeatures.toArray(new FeatureInfo[systemAvailableFeatures.size()]);
+  }
+
+  @Implementation
+  public void verifyPendingInstall(int id, int verificationCode) {
+    if (verificationResults.containsKey(id)) {
+      throw new IllegalStateException("Multiple verifications for id=" + id);
+    }
+    verificationResults.put(id, verificationCode);
   }
 
   @Implementation
@@ -146,6 +169,11 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public void freeStorageAndNotify(String volumeUuid, long freeStorageSize, IPackageDataObserver observer) {
+
+  }
+
+  @Implementation
+  public void setInstallerPackageName(String targetPackage, String installerPackageName) {
 
   }
 }
