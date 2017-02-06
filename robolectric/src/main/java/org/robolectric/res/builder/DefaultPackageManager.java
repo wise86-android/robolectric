@@ -12,6 +12,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.StubPackageManager;
 import org.robolectric.manifest.*;
@@ -19,17 +20,7 @@ import org.robolectric.util.TempDirectory;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 import static android.os.Build.VERSION_CODES.N;
 
@@ -720,6 +711,16 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   @Override
   public String getNameForUid(int uid) {
     return namesForUid.get(uid);
+  }
+
+  @Override
+  public List<ApplicationInfo> getInstalledApplications(int flags) {
+    List<ApplicationInfo> result = new LinkedList<>();
+
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      result.add(packageInfo.applicationInfo);
+    }
+    return result;
   }
 
   public void setPackagesForCallingUid(String... packagesForCallingUid) {

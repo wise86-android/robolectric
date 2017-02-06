@@ -134,7 +134,7 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public List<ApplicationInfo> getInstalledApplications(int flags) {
-    return null;
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getInstalledApplications(flags);
   }
 
   @Implementation
