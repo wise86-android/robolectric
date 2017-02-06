@@ -6,11 +6,10 @@ import android.content.IntentFilter;
 import android.content.pm.*;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Binder;
-import android.os.Bundle;
-import android.os.PatternMatcher;
+import android.os.*;
 import android.util.Pair;
 import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import org.robolectric.RuntimeEnvironment;
@@ -39,82 +38,20 @@ import static android.os.Build.VERSION_CODES.N;
 @Deprecated
 public class DefaultPackageManager extends StubPackageManager implements RobolectricPackageManager {
 
-  private Map<Integer, String> namesForUid = new HashMap<>();
-  private Map<Integer, String[]> packagesForUid = new HashMap<>();
-
-  static class IntentComparator implements Comparator<Intent> {
-
-    @Override
-    public int compare(Intent i1, Intent i2) {
-      if (i1 == null && i2 == null) return 0;
-      if (i1 == null && i2 != null) return -1;
-      if (i1 != null && i2 == null) return 1;
-      if (i1.equals(i2)) return 0;
-      String action1 = i1.getAction();
-      String action2 = i2.getAction();
-      if (action1 == null && action2 != null) return -1;
-      if (action1 != null && action2 == null) return 1;
-      if (action1 != null && action2 != null) {
-        if (!action1.equals(action2)) {
-          return action1.compareTo(action2);
-        }
-      }
-      Uri data1 = i1.getData();
-      Uri data2 = i2.getData();
-      if (data1 == null && data2 != null) return -1;
-      if (data1 != null && data2 == null) return 1;
-      if (data1 != null && data2 != null) {
-        if (!data1.equals(data2)) {
-          return data1.compareTo(data2);
-        }
-      }
-      ComponentName component1 = i1.getComponent();
-      ComponentName component2 = i2.getComponent();
-      if (component1 == null && component2 != null) return -1;
-      if (component1 != null && component2 == null) return 1;
-      if (component1 != null && component2 != null) {
-        if (!component1.equals(component2)) {
-          return component1.compareTo(component2);
-        }
-      }
-      String package1 = i1.getPackage();
-      String package2 = i2.getPackage();
-      if (package1 == null && package2 != null) return -1;
-      if (package1 != null && package2 == null) return 1;
-      if (package1 != null && package2 != null) {
-        if (!package1.equals(package2)) {
-          return package1.compareTo(package2);
-        }
-      }
-      Set<String> categories1 = i1.getCategories();
-      Set<String> categories2 = i2.getCategories();
-      if (categories1 == null) return categories2 == null ? 0 : -1;
-      if (categories2 == null) return 1;
-      if (categories1.size() > categories2.size()) return 1;
-      if (categories1.size() < categories2.size()) return -1;
-      String[] array1 = categories1.toArray(new String[0]);
-      String[] array2 = categories2.toArray(new String[0]);
-      Arrays.sort(array1);
-      Arrays.sort(array2);
-      for (int i = 0; i < array1.length; ++i) {
-        int val = array1[i].compareTo(array2[i]);
-        if (val != 0) return val;
-      }
-      return 0;
-    }
-  }
-
   private final Map<String, AndroidManifest> androidManifests = new LinkedHashMap<>();
   private final Map<String, PackageInfo> packageInfos = new LinkedHashMap<>();
-  private Map<Intent, List<ResolveInfo>> resolveInfoForIntent = new TreeMap<>(new IntentComparator());
-  private Map<ComponentName, ComponentState> componentList = new LinkedHashMap<>();
-  private Map<ComponentName, Drawable> drawableList = new LinkedHashMap<>();
-  private Map<String, Drawable> applicationIcons = new HashMap<>();
-  private Map<String, Boolean> systemFeatureList = new LinkedHashMap<>();
-  private Map<IntentFilter, ComponentName> preferredActivities = new LinkedHashMap<>();
-  private Map<Pair<String, Integer>, Drawable> drawables = new LinkedHashMap<>();
+  private final Map<String, PackageStats> packageStatsMap = new HashMap<>();
+  private final Map<Intent, List<ResolveInfo>> resolveInfoForIntent = new TreeMap<>(new IntentComparator());
+  private final Map<ComponentName, ComponentState> componentList = new LinkedHashMap<>();
+  private final Map<ComponentName, Drawable> drawableList = new LinkedHashMap<>();
+  private final Map<String, Drawable> applicationIcons = new HashMap<>();
+  private final Map<String, Boolean> systemFeatureList = new LinkedHashMap<>();
+  private final Map<IntentFilter, ComponentName> preferredActivities = new LinkedHashMap<>();
+  private final Map<Pair<String, Integer>, Drawable> drawables = new LinkedHashMap<>();
+  private final Map<String, Integer> applicationEnabledSettingMap = new HashMap<>();
+  private final Map<Integer, String> namesForUid = new HashMap<>();
+  private final Map<Integer, String[]> packagesForUid = new HashMap<>();
   private boolean queryIntentImplicitly = false;
-  private HashMap<String, Integer> applicationEnabledSettingMap = new HashMap<>();
 
   @Override
   public PackageInstaller getPackageInstaller() {
@@ -480,7 +417,15 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
    */
   @Override
   public void addPackage(PackageInfo packageInfo) {
+    addPackage(packageInfo, new PackageStats(packageInfo.packageName));
+  }
+
+  @Override
+  public void addPackage(PackageInfo packageInfo, PackageStats packageStats) {
+    Preconditions.checkArgument(packageInfo.packageName.equals(packageStats.packageName));
+
     packageInfos.put(packageInfo.packageName, packageInfo);
+    packageStatsMap.put(packageInfo.packageName, packageStats);
     applicationEnabledSettingMap.put(packageInfo.packageName, PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
   }
 
@@ -838,6 +783,83 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
           return sessionInfo;
         }
       };
+    }
+  }
+
+  @Override
+  public void getPackageSizeInfo(String pkgName, int uid, final IPackageStatsObserver callback) {
+    final PackageStats packageStats = packageStatsMap.get(pkgName);
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          callback.onGetStatsCompleted(packageStats, packageStats != null);
+        } catch (RemoteException remoteException) {
+          remoteException.rethrowFromSystemServer();
+        }
+      }
+    });
+  }
+
+  static class IntentComparator implements Comparator<Intent> {
+
+    @Override
+    public int compare(Intent i1, Intent i2) {
+      if (i1 == null && i2 == null) return 0;
+      if (i1 == null && i2 != null) return -1;
+      if (i1 != null && i2 == null) return 1;
+      if (i1.equals(i2)) return 0;
+      String action1 = i1.getAction();
+      String action2 = i2.getAction();
+      if (action1 == null && action2 != null) return -1;
+      if (action1 != null && action2 == null) return 1;
+      if (action1 != null && action2 != null) {
+        if (!action1.equals(action2)) {
+          return action1.compareTo(action2);
+        }
+      }
+      Uri data1 = i1.getData();
+      Uri data2 = i2.getData();
+      if (data1 == null && data2 != null) return -1;
+      if (data1 != null && data2 == null) return 1;
+      if (data1 != null && data2 != null) {
+        if (!data1.equals(data2)) {
+          return data1.compareTo(data2);
+        }
+      }
+      ComponentName component1 = i1.getComponent();
+      ComponentName component2 = i2.getComponent();
+      if (component1 == null && component2 != null) return -1;
+      if (component1 != null && component2 == null) return 1;
+      if (component1 != null && component2 != null) {
+        if (!component1.equals(component2)) {
+          return component1.compareTo(component2);
+        }
+      }
+      String package1 = i1.getPackage();
+      String package2 = i2.getPackage();
+      if (package1 == null && package2 != null) return -1;
+      if (package1 != null && package2 == null) return 1;
+      if (package1 != null && package2 != null) {
+        if (!package1.equals(package2)) {
+          return package1.compareTo(package2);
+        }
+      }
+      Set<String> categories1 = i1.getCategories();
+      Set<String> categories2 = i2.getCategories();
+      if (categories1 == null) return categories2 == null ? 0 : -1;
+      if (categories2 == null) return 1;
+      if (categories1.size() > categories2.size()) return 1;
+      if (categories1.size() < categories2.size()) return -1;
+      String[] array1 = categories1.toArray(new String[0]);
+      String[] array2 = categories2.toArray(new String[0]);
+      Arrays.sort(array1);
+      Arrays.sort(array2);
+      for (int i = 0; i < array1.length; ++i) {
+        int val = array1[i].compareTo(array2[i]);
+        if (val != 0) return val;
+      }
+      return 0;
     }
   }
 }

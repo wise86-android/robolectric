@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.pm.*;
 import android.content.res.Resources;
 import android.os.Build;
-import android.os.RemoteException;
 import android.os.UserHandle;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Implementation;
@@ -181,23 +180,22 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   }
 
+  @Override
   @Implementation(maxSdk = JELLY_BEAN)
   public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
-    getPackageSizeInfoAsUser(packageName, UserHandle.myUserId(), observer);
+    RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(packageName, UserHandle.myUserId(), observer);
   }
 
+  @Override
   @Implementation(minSdk = JELLY_BEAN_MR1, maxSdk = M)
-  public void getPackageSizeInfo(String packageName, int userHandle, IPackageStatsObserver observer) {
-    getPackageSizeInfoAsUser(packageName, UserHandle.myUserId(), observer);
+  public void getPackageSizeInfo(String pkgName, int uid, final IPackageStatsObserver callback) {
+    RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(pkgName, uid, callback);
   }
 
+  @Override
   @Implementation(minSdk = N)
   public void getPackageSizeInfoAsUser(String pkgName, int uid, final IPackageStatsObserver callback) {
-    try {
-      callback.onGetStatsCompleted(new PackageStats(pkgName), true);
-    } catch (RemoteException e) {
-      e.rethrowFromSystemServer();
-    }
+    RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(pkgName, uid, callback);
   }
 
   @Implementation
