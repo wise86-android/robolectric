@@ -947,6 +947,25 @@ public class ShadowPackageManagerTest {
     packageManager.currentToCanonicalPackageNames(new String[] {"current_name_1", "current_name_2"});
   }
 
+  @Test
+  public void getInstalledApplications() {
+    List<ApplicationInfo> installedApplications = packageManager.getInstalledApplications(0);
+
+    // Default should include the application under test
+    assertThat(installedApplications).hasSize(1);
+    assertThat(installedApplications.get(0).packageName).isEqualTo("org.robolectric");
+
+    PackageInfo packageInfo = new PackageInfo();
+    packageInfo.packageName = "org.other";
+    packageInfo.applicationInfo = new ApplicationInfo();
+    packageInfo.applicationInfo.packageName = "org.other";
+    shadowPackageManager.addPackage(packageInfo);
+
+    installedApplications = packageManager.getInstalledApplications(0);
+    assertThat(installedApplications).hasSize(2);
+    assertThat(installedApplications.get(1).packageName).isEqualTo("org.other");
+  }
+
   /////////////////////////////
 
   public AndroidManifest newConfigWith(String contents) throws IOException {
