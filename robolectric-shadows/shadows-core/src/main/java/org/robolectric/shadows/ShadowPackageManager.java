@@ -19,10 +19,11 @@ import java.util.Map;
 @Implements(PackageManager.class)
 public class ShadowPackageManager implements RobolectricPackageManager {
 
-  protected Map<String, Boolean> permissionRationalMap = new HashMap<>();
+  protected Map<String, Boolean> permissionRationaleMap = new HashMap<>();
   protected List<FeatureInfo> systemAvailableFeatures = new LinkedList<>();
   private Map<String, PackageInfo> packageArchiveInfo = new HashMap<>();
   protected final Map<Integer, Integer> verificationResults = new HashMap<>();
+  protected final Map<String, String> currentToCanonicalNames = new HashMap<>();
 
   @Override
   public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
@@ -232,7 +233,7 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   @Override
   public PackageInfo getPackageArchiveInfo(String archiveFilePath, int flags) {
-    return packageArchiveInfo.get(archiveFilePath);
+    return RuntimeEnvironment.getRobolectricPackageManager().getPackageArchiveInfo(archiveFilePath, flags);
   }
 
   public void setPackageArchiveInfo(String archiveFilePath, PackageInfo packageInfo) {
@@ -250,7 +251,7 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   }
 
   public void setShouldShowRequestPermissionRationale(String permission, boolean show) {
-    permissionRationalMap.put(permission, show);
+    permissionRationaleMap.put(permission, show);
   }
 
   public void addSystemAvailableFeature(FeatureInfo featureInfo) {
@@ -259,5 +260,9 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   public void clearSystemAvailableFeatures() {
     systemAvailableFeatures.clear();
+  }
+
+  public void addCurrentToCannonicalName(String currentName, String canonicalName) {
+    currentToCanonicalNames.put(currentName, canonicalName);
   }
 }
