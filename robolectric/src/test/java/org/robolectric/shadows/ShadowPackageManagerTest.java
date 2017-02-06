@@ -12,14 +12,15 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.os.RemoteException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.robolectric.*;
+import org.robolectric.R;
+import org.robolectric.Robolectric;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.TestRunners;
 import org.robolectric.annotation.Config;
 import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.res.DefaultPackageManagerTest;
@@ -37,9 +38,7 @@ import static android.content.pm.PackageManager.VERIFICATION_ALLOW;
 import static android.os.Build.VERSION_CODES.M;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 import static org.robolectric.Robolectric.setupActivity;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -53,6 +52,9 @@ public class ShadowPackageManagerTest {
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
   private PackageManager packageManager;
+
+  private final IPackageStatsObserver packageStatsObserver = mock(IPackageStatsObserver.class);
+  private final ArgumentCaptor<PackageStats> packageStatsCaptor = ArgumentCaptor.forClass(PackageStats.class);
 
   @Before
   public void setUp() {
@@ -868,17 +870,73 @@ public class ShadowPackageManagerTest {
   }
 
   @Test
-  public void getPackageSizeInfo() throws Exception {
+  public void whenPackageNotPresent_getPackageSizeInfo_callsBackWithFailure() throws Exception {
+    packageManager.getPackageSizeInfo("nonexistant.package", packageStatsObserver);
 
-    IPackageStatsObserver packageStatsObserver = mock(IPackageStatsObserver.class);
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(false));
+    assertThat(packageStatsCaptor.getValue()).isNull();
+  }
 
-    packageManager.getPackageSizeInfo("mypackage", packageStatsObserver);
+  @Test
+  public void whenPackageNotPresentAndPaused_getPackageSizeInfo_callsBackWithFailure() throws Exception {
+    Robolectric.getForegroundThreadScheduler().pause();
 
-    ArgumentCaptor<PackageStats> captor = ArgumentCaptor.forClass(PackageStats.class);
+    packageManager.getPackageSizeInfo("nonexistant.package", packageStatsObserver);
 
-    verify(packageStatsObserver).onGetStatsCompleted(captor.capture(), anyBoolean());
+    verifyZeroInteractions(packageStatsObserver);
 
-    assertThat(captor.getValue().packageName).isEqualTo("mypackage");
+    Robolectric.getForegroundThreadScheduler().advanceToLastPostedRunnable();
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(false));
+    assertThat(packageStatsCaptor.getValue()).isNull();
+  }
+
+  @Test
+  public void whenNotPreconfigured_getPackageSizeInfo_callsBackWithDefaults() throws Exception {
+    packageManager.getPackageSizeInfo("org.robolectric", packageStatsObserver);
+
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(true));
+    assertThat(packageStatsCaptor.getValue().packageName).isEqualTo("org.robolectric");
+  }
+
+  @Test
+  public void whenPreconfigured_getPackageSizeInfo_callsBackWithConfiguredValues() throws Exception {
+    PackageInfo packageInfo = new PackageInfo();
+    packageInfo.packageName = "org.robolectric";
+    PackageStats packageStats = new PackageStats("org.robolectric");
+    shadowPackageManager.addPackage(packageInfo, packageStats);
+
+    packageManager.getPackageSizeInfo("org.robolectric", packageStatsObserver);
+
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(true));
+    assertThat(packageStatsCaptor.getValue().packageName).isEqualTo("org.robolectric");
+    assertThat(packageStatsCaptor.getValue().toString()).isEqualTo(packageStats.toString());
+  }
+
+  @Test
+  public void whenPreconfiguredForAnotherPackage_getPackageSizeInfo_callsBackWithConfiguredValues() throws Exception {
+    PackageInfo packageInfo = new PackageInfo();
+    packageInfo.packageName = "org.other";
+    PackageStats packageStats = new PackageStats("org.other");
+    shadowPackageManager.addPackage(packageInfo, packageStats);
+
+    packageManager.getPackageSizeInfo("org.other", packageStatsObserver);
+
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(true));
+    assertThat(packageStatsCaptor.getValue().packageName).isEqualTo("org.other");
+    assertThat(packageStatsCaptor.getValue().toString()).isEqualTo(packageStats.toString());
+  }
+
+  @Test
+  public void whenPaused_getPackageSizeInfo_callsBackWithConfiguredValuesAfterIdle() throws Exception {
+    Robolectric.getForegroundThreadScheduler().pause();
+
+    packageManager.getPackageSizeInfo("org.robolectric", packageStatsObserver);
+
+    verifyZeroInteractions(packageStatsObserver);
+
+    Robolectric.getForegroundThreadScheduler().advanceToLastPostedRunnable();
+    verify(packageStatsObserver).onGetStatsCompleted(packageStatsCaptor.capture(), eq(true));
+    assertThat(packageStatsCaptor.getValue().packageName).isEqualTo("org.robolectric");
   }
 
   @Test

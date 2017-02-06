@@ -16,6 +16,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static android.os.Build.VERSION_CODES.*;
+
 @Implements(PackageManager.class)
 public class ShadowPackageManager implements RobolectricPackageManager {
 
@@ -162,6 +164,11 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   }
 
   @Override
+  public void addPackage(PackageInfo packageInfo, PackageStats packageStats) {
+    RuntimeEnvironment.getRobolectricPackageManager().addPackage(packageInfo, packageStats);
+  }
+
+  @Override
   public void addPackage(String packageName) {
     RuntimeEnvironment.getRobolectricPackageManager().addPackage(packageName);
   }
@@ -264,5 +271,17 @@ public class ShadowPackageManager implements RobolectricPackageManager {
 
   public void addCurrentToCannonicalName(String currentName, String canonicalName) {
     currentToCanonicalNames.put(currentName, canonicalName);
+  }
+
+  @Implementation(maxSdk = JELLY_BEAN)
+  public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
+  }
+
+  @Implementation(minSdk = JELLY_BEAN_MR1, maxSdk = M)
+  public void getPackageSizeInfo(String pkgName, int uid, final IPackageStatsObserver callback) {
+  }
+
+  @Implementation(minSdk = N)
+  public void getPackageSizeInfoAsUser(String pkgName, int uid, final IPackageStatsObserver callback) {
   }
 }
