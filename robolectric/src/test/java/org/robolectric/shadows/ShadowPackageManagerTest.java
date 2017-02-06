@@ -12,10 +12,13 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.robolectric.*;
 import org.robolectric.annotation.Config;
 import org.robolectric.manifest.AndroidManifest;
@@ -31,8 +34,12 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static android.content.pm.PackageManager.VERIFICATION_ALLOW;
+import static android.os.Build.VERSION_CODES.M;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.robolectric.Robolectric.setupActivity;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -828,7 +835,7 @@ public class ShadowPackageManagerTest {
     packageManager.getResourcesForApplication("non.existent.package");
   }
 
-  @Test
+  @Test @Config(minSdk = M)
   public void shouldShowRequestPermissionRationale() {
     assertThat(packageManager.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)).isFalse();
 
@@ -854,21 +861,32 @@ public class ShadowPackageManagerTest {
   }
 
   @Test
-  public void getPackageArchiveInfo() {
-    assertThat(packageManager.getPackageArchiveInfo("", 0)).isNull();
-
-    PackageInfo packageInfo = new PackageInfo();
-
-    shadowPackageManager.setPackageArchiveInfo("/some/path/to/an/apk", packageInfo);
-
-    assertThat(packageManager.getPackageArchiveInfo("/some/path/to/an/apk", 0)).isEqualTo(packageInfo);
-  }
-
-  @Test
   public void verifyPendingInstall() {
     packageManager.verifyPendingInstall(1234, VERIFICATION_ALLOW);
 
     assertThat(shadowPackageManager.getVerificationResult(1234)).isEqualTo(VERIFICATION_ALLOW);
+  }
+
+  @Test
+  public void getPackageSizeInfo() throws Exception {
+
+    IPackageStatsObserver packageStatsObserver = mock(IPackageStatsObserver.class);
+
+    packageManager.getPackageSizeInfo("mypackage", packageStatsObserver);
+
+    ArgumentCaptor<PackageStats> captor = ArgumentCaptor.forClass(PackageStats.class);
+
+    verify(packageStatsObserver).onGetStatsCompleted(captor.capture(), anyBoolean());
+
+    assertThat(captor.getValue().packageName).isEqualTo("mypackage");
+  }
+
+  @Test
+  public void currentToCanonicalPackageNames() {
+    shadowPackageManager.addCurrentToCannonicalName("current_name_1", "cannonical_name_1");
+    shadowPackageManager.addCurrentToCannonicalName("current_name_2", "cannonical_name_2");
+
+    packageManager.currentToCanonicalPackageNames(new String[] {"current_name_1", "current_name_2"});
   }
 
   /////////////////////////////

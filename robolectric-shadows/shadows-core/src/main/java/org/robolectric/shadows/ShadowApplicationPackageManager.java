@@ -7,11 +7,15 @@ import android.content.Intent;
 import android.content.pm.*;
 import android.content.res.Resources;
 import android.os.Build;
+import android.os.RemoteException;
+import android.os.UserHandle;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
 
 import java.util.List;
+
+import static android.os.Build.VERSION_CODES.*;
 
 @Implements(className = "android.app.ApplicationPackageManager", isInAndroidSdk = false)
 public class ShadowApplicationPackageManager extends ShadowPackageManager {
@@ -144,9 +148,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     return null;
   }
 
-  @Implementation
+  @Implementation(minSdk = M)
   public boolean shouldShowRequestPermissionRationale(String permission) {
-    return permissionRationalMap.containsKey(permission) ? permissionRationalMap.get(permission) : false;
+    return permissionRationaleMap.containsKey(permission) ? permissionRationaleMap.get(permission) : false;
   }
 
   @Implementation
@@ -175,5 +179,41 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   @Implementation
   public void setInstallerPackageName(String targetPackage, String installerPackageName) {
 
+  }
+
+  @Implementation(maxSdk = JELLY_BEAN)
+  public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
+    getPackageSizeInfoAsUser(packageName, UserHandle.myUserId(), observer);
+  }
+
+  @Implementation(minSdk = JELLY_BEAN_MR1, maxSdk = M)
+  public void getPackageSizeInfo(String packageName, int userHandle, IPackageStatsObserver observer) {
+    getPackageSizeInfoAsUser(packageName, UserHandle.myUserId(), observer);
+  }
+
+  @Implementation(minSdk = N)
+  public void getPackageSizeInfoAsUser(String pkgName, int uid, final IPackageStatsObserver callback) {
+    try {
+      callback.onGetStatsCompleted(new PackageStats(pkgName), true);
+    } catch (RemoteException e) {
+      e.rethrowFromSystemServer();
+    }
+  }
+
+  @Implementation
+  public void deletePackage(String packageName, IPackageDeleteObserver observer, int flags) {
+  }
+
+  @Implementation
+  public String[] currentToCanonicalPackageNames(String[] names) {
+    String[] out = new String[names.length];
+    for (int i = names.length - 1; i >= 0; i--) {
+      if (currentToCanonicalNames.containsKey(names[i])) {
+        out[i] = currentToCanonicalNames.get(names[i]);
+      } else {
+        out[i] = names[i];
+      }
+    }
+    return out;
   }
 }
