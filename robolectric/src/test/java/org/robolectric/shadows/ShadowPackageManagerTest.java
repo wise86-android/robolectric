@@ -65,42 +65,7 @@ public class ShadowPackageManagerTest {
   }
 
   @Test
-  @Config(minSdk = Build.VERSION_CODES.LOLLIPOP)
-  public void getPackageInstaller() {
-    PackageInfo packageInfo = new PackageInfo();
-    packageInfo.packageName = TEST_PACKAGE_NAME;
-    packageInfo.applicationInfo = new ApplicationInfo();
-    packageInfo.applicationInfo.packageName = TEST_PACKAGE_NAME;
-    packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
-    shadowPackageManager.addPackage(packageInfo);
-
-    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
-
-    List<String> allPackageNames = new LinkedList<>();
-    for (PackageInstaller.SessionInfo session : allSessions) {
-      allPackageNames.add(session.appPackageName);
-    }
-
-    assertThat(allPackageNames).contains(TEST_PACKAGE_NAME);
-  }
-
-  @Test
-  @Config(minSdk = Build.VERSION_CODES.LOLLIPOP)
-  public void packageInstallerAndGetInstalledPackagesAreConsistent() {
-    PackageInfo packageInfo = new PackageInfo();
-    packageInfo.packageName = TEST_PACKAGE_NAME;
-    packageInfo.applicationInfo = new ApplicationInfo();
-    packageInfo.applicationInfo.packageName = TEST_PACKAGE_NAME;
-    packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
-    shadowPackageManager.addPackage(packageInfo);
-
-    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
-
-    assertThat(allSessions).hasSameSizeAs(shadowPackageManager.getInstalledPackages(0));
-  }
-
-  @Test
-  public void packageInstallerAndGetPackageArchiveInfo() {
+  public void getPackageArchiveInfo() {
     ApplicationInfo appInfo = new ApplicationInfo();
     appInfo.flags = 0;
     appInfo.packageName = TEST_PACKAGE_NAME;
