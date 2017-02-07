@@ -1,5 +1,7 @@
 package org.robolectric.res.builder;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -12,13 +14,13 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.StubPackageManager;
 import org.robolectric.manifest.*;
 import org.robolectric.util.TempDirectory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -767,6 +769,16 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   }
 
   private class RoboPackageInstaller extends PackageInstaller {
+
+    private int nextSessionId;
+    private Map<Integer, SessionInfo> sessionInfos = new HashMap<>();
+    private Set<CallbackInfo> callbackInfos = new HashSet<>();
+
+    private class CallbackInfo {
+      SessionCallback callback;
+      Handler handler;
+    }
+
     public RoboPackageInstaller() {
       super(RuntimeEnvironment.application, DefaultPackageManager.this, null, null, -1);
     }
@@ -774,6 +786,50 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     @Override
     public List<SessionInfo> getAllSessions() {
       return ImmutableList.copyOf(Iterables.transform(packageInfos.keySet(), packageNameToSessionInfo()));
+    }
+
+    @Override
+    public void registerSessionCallback(@NonNull SessionCallback callback, @NonNull Handler handler) {
+      CallbackInfo callbackInfo = new CallbackInfo();
+      callbackInfo.callback = callback;
+      callbackInfo.handler = handler;
+      this.callbackInfos.add(callbackInfo);
+    }
+
+    @Override
+    public @Nullable SessionInfo getSessionInfo(int sessionId) {
+      return sessionInfos.get(sessionId);
+    }
+
+    @Override
+    public int createSession(@NonNull SessionParams params) throws IOException {
+      final SessionInfo sessionInfo = new SessionInfo();
+      sessionInfo.sessionId = nextSessionId++;
+      sessionInfo.appPackageName = params.appPackageName;
+      sessionInfos.put(sessionInfo.getSessionId(), sessionInfo);
+
+      for (final CallbackInfo callbackInfo : callbackInfos) {
+        callbackInfo.handler.post(new Runnable() {
+          @Override
+          public void run() {
+           callbackInfo.callback.onCreated(sessionInfo.sessionId);
+          }
+        });
+      }
+
+      return sessionInfo.sessionId;
+    }
+
+    public void abandonSession(int sessionId) {
+      sessionInfos.remove(sessionId);
+    }
+
+    public @NonNull Session openSession(int sessionId) throws IOException {
+      if (!sessionInfos.containsKey(sessionId)) {
+        throw new SecurityException("Invalid session Id: " + sessionId);
+      }
+
+      return new Session(null);
     }
 
     private Function<String, PackageInstaller.SessionInfo> packageNameToSessionInfo() {
