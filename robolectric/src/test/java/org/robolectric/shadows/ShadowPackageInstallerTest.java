@@ -161,6 +161,9 @@ public class ShadowPackageInstallerTest {
 
     session.commit(new IntentSender(ReflectionHelpers.createNullProxy(IIntentSender.class)));
 
+    shadowOf(packageInstaller).setSessionProgress(sessionId, 50.0f);
+    verify(mockCallback).onProgressChanged(sessionId, 50.0f);
+
     shadowOf(packageInstaller).setSessionSucceeds(sessionId);
     verify(mockCallback).onFinished(sessionId, true);
   }
