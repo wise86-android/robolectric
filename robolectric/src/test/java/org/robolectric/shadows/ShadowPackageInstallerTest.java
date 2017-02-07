@@ -130,7 +130,7 @@ public class ShadowPackageInstallerTest {
   }
 
   @Test
-  public void registerSessionCallback() throws Exception {
+  public void registerSessionCallback_sessionFails() throws Exception {
     PackageInstaller.SessionCallback mockCallback = mock(PackageInstaller.SessionCallback.class);
     packageInstaller.registerSessionCallback(mockCallback, new Handler());
     int sessionId = packageInstaller.createSession(createSessionParams("packageName"));
@@ -143,7 +143,26 @@ public class ShadowPackageInstallerTest {
 
     session.commit(new IntentSender(ReflectionHelpers.createNullProxy(IIntentSender.class)));
 
-    ShadowPackageInstaller.ShadowSession shadowSession = shadowOf(session);
+    shadowOf(packageInstaller).setSessionFails(sessionId);
+    verify(mockCallback).onFinished(sessionId, false);
+  }
+
+  @Test
+  public void registerSessionCallback_sessionSucceeds() throws Exception {
+    PackageInstaller.SessionCallback mockCallback = mock(PackageInstaller.SessionCallback.class);
+    packageInstaller.registerSessionCallback(mockCallback, new Handler());
+    int sessionId = packageInstaller.createSession(createSessionParams("packageName"));
+    verify(mockCallback).onCreated(sessionId);
+
+    PackageInstaller.Session session = packageInstaller.openSession(sessionId);
+
+    OutputStream outputStream = session.openWrite("filename", 0, 0);
+    outputStream.close();
+
+    session.commit(new IntentSender(ReflectionHelpers.createNullProxy(IIntentSender.class)));
+
+    shadowOf(packageInstaller).setSessionSucceeds(sessionId);
+    verify(mockCallback).onFinished(sessionId, true);
   }
 
   private static PackageInstaller.SessionParams createSessionParams(String appPackageName) {
