@@ -45,10 +45,14 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   private final Map<Integer, String> namesForUid = new HashMap<>();
   private final Map<Integer, String[]> packagesForUid = new HashMap<>();
   private boolean queryIntentImplicitly = false;
+  private PackageInstaller packageInstaller;
 
   @Override
   public PackageInstaller getPackageInstaller() {
-    return new RoboPackageInstaller();
+    if (packageInstaller == null) {
+      packageInstaller = new PackageInstaller(null, null, null, null, UserHandle.myUserId());
+    }
+    return packageInstaller;
   }
 
   @Override
@@ -420,6 +424,16 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     packageInfos.put(packageInfo.packageName, packageInfo);
     packageStatsMap.put(packageInfo.packageName, packageStats);
     applicationEnabledSettingMap.put(packageInfo.packageName, PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
+
+    if (RuntimeEnvironment.getApiLevel() >= Build.VERSION_CODES.LOLLIPOP) {
+      PackageInstaller.SessionParams sessionParams = new PackageInstaller.SessionParams(0);
+      sessionParams.setAppPackageName(packageInfo.packageName);
+      try {
+        getPackageInstaller().createSession(sessionParams);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -765,82 +779,6 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
       }
     }
     return bundle;
-  }
-
-  private class RoboPackageInstaller extends PackageInstaller {
-
-    private int nextSessionId;
-    private Map<Integer, SessionInfo> sessionInfos = new HashMap<>();
-    private Set<CallbackInfo> callbackInfos = new HashSet<>();
-
-    private class CallbackInfo {
-      SessionCallback callback;
-      Handler handler;
-    }
-
-    public RoboPackageInstaller() {
-      super(RuntimeEnvironment.application, DefaultPackageManager.this, null, null, -1);
-    }
-
-    @Override
-    public List<SessionInfo> getAllSessions() {
-      return ImmutableList.copyOf(Iterables.transform(packageInfos.keySet(), packageNameToSessionInfo()));
-    }
-
-    @Override
-    public void registerSessionCallback(@NonNull SessionCallback callback, @NonNull Handler handler) {
-      CallbackInfo callbackInfo = new CallbackInfo();
-      callbackInfo.callback = callback;
-      callbackInfo.handler = handler;
-      this.callbackInfos.add(callbackInfo);
-    }
-
-    @Override
-    public @Nullable SessionInfo getSessionInfo(int sessionId) {
-      return sessionInfos.get(sessionId);
-    }
-
-    @Override
-    public int createSession(@NonNull SessionParams params) throws IOException {
-      final SessionInfo sessionInfo = new SessionInfo();
-      sessionInfo.sessionId = nextSessionId++;
-      sessionInfo.appPackageName = params.appPackageName;
-      sessionInfos.put(sessionInfo.getSessionId(), sessionInfo);
-
-      for (final CallbackInfo callbackInfo : callbackInfos) {
-        callbackInfo.handler.post(new Runnable() {
-          @Override
-          public void run() {
-           callbackInfo.callback.onCreated(sessionInfo.sessionId);
-          }
-        });
-      }
-
-      return sessionInfo.sessionId;
-    }
-
-    public void abandonSession(int sessionId) {
-      sessionInfos.remove(sessionId);
-    }
-
-    public @NonNull Session openSession(int sessionId) throws IOException {
-      if (!sessionInfos.containsKey(sessionId)) {
-        throw new SecurityException("Invalid session Id: " + sessionId);
-      }
-
-      return new Session(null);
-    }
-
-    private Function<String, PackageInstaller.SessionInfo> packageNameToSessionInfo() {
-      return new Function<String, PackageInstaller.SessionInfo>() {
-        @Override
-        public PackageInstaller.SessionInfo apply(String packageName) {
-          PackageInstaller.SessionInfo sessionInfo = new PackageInstaller.SessionInfo();
-          sessionInfo.appPackageName = packageName;
-          return sessionInfo;
-        }
-      };
-    }
   }
 
   @Override

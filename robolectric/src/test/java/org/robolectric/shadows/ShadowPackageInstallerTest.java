@@ -2,7 +2,10 @@ package org.robolectric.shadows;
 
 import android.content.IIntentSender;
 import android.content.IntentSender;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
+import android.os.Build;
 import android.os.Handler;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +16,8 @@ import org.robolectric.annotation.Config;
 import org.robolectric.util.ReflectionHelpers;
 
 import java.io.OutputStream;
+import java.util.LinkedList;
+import java.util.List;
 
 import static android.os.Build.VERSION_CODES.LOLLIPOP;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,11 +29,47 @@ import static org.robolectric.Shadows.shadowOf;
 @Config(minSdk = LOLLIPOP)
 public class ShadowPackageInstallerTest {
 
+  private static final String TEST_PACKAGE_NAME = "com.some.other.package";
+  private static final String TEST_PACKAGE_LABEL = "My Little App";
+
   private PackageInstaller packageInstaller;
 
   @Before
   public void setUp() {
     packageInstaller = RuntimeEnvironment.application.getPackageManager().getPackageInstaller();
+  }
+
+  @Test
+  public void getPackageInstaller() {
+    PackageInfo packageInfo = new PackageInfo();
+    packageInfo.packageName = TEST_PACKAGE_NAME;
+    packageInfo.applicationInfo = new ApplicationInfo();
+    packageInfo.applicationInfo.packageName = TEST_PACKAGE_NAME;
+    packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
+    shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageInfo);
+
+    List<PackageInstaller.SessionInfo> allSessions = packageInstaller.getAllSessions();
+
+    List<String> allPackageNames = new LinkedList<>();
+    for (PackageInstaller.SessionInfo session : allSessions) {
+      allPackageNames.add(session.appPackageName);
+    }
+
+    assertThat(allPackageNames).contains(TEST_PACKAGE_NAME);
+  }
+
+  @Test
+  public void packageInstallerAndGetInstalledPackagesAreConsistent() {
+    PackageInfo packageInfo = new PackageInfo();
+    packageInfo.packageName = TEST_PACKAGE_NAME;
+    packageInfo.applicationInfo = new ApplicationInfo();
+    packageInfo.applicationInfo.packageName = TEST_PACKAGE_NAME;
+    packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
+    shadowOf(RuntimeEnvironment.application.getPackageManager()).addPackage(packageInfo);
+
+    List<PackageInstaller.SessionInfo> allSessions = packageInstaller.getAllSessions();
+
+    assertThat(allSessions).hasSameSizeAs(RuntimeEnvironment.application.getPackageManager().getInstalledPackages(0));
   }
 
   @Test
@@ -103,7 +144,6 @@ public class ShadowPackageInstallerTest {
     session.commit(new IntentSender(ReflectionHelpers.createNullProxy(IIntentSender.class)));
 
     ShadowPackageInstaller.ShadowSession shadowSession = shadowOf(session);
-    shadowSession.setSucceeds();
   }
 
   private static PackageInstaller.SessionParams createSessionParams(String appPackageName) {
