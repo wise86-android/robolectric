@@ -12,14 +12,17 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.R;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.manifest.AndroidManifest;
+import org.robolectric.manifest.PermissionItemData;
 import org.robolectric.res.builder.RobolectricPackageManager;
 import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowDrawable;
@@ -48,6 +51,12 @@ public class DefaultPackageManagerTest {
   private static final String TEST_APP_PATH = "/values/app/application.apk";
   private final RobolectricPackageManager rpm = RuntimeEnvironment.getRobolectricPackageManager();
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  private PackageManager packageManager;
+
+  @Before
+  public void setUp() throws Exception {
+    packageManager = RuntimeEnvironment.application.getPackageManager();
+  }
 
   @Test
   public void getPackageInstaller() {
@@ -58,7 +67,7 @@ public class DefaultPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     rpm.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
 
     List<String> allPackageNames = new LinkedList<>();
     for (PackageInstaller.SessionInfo session : allSessions) {
@@ -77,7 +86,7 @@ public class DefaultPackageManagerTest {
     packageInfo.applicationInfo.name = TEST_PACKAGE_LABEL;
     rpm.addPackage(packageInfo);
 
-    List<PackageInstaller.SessionInfo> allSessions = RuntimeEnvironment.application.getPackageManager().getPackageInstaller().getAllSessions();
+    List<PackageInstaller.SessionInfo> allSessions = packageManager.getPackageInstaller().getAllSessions();
 
     assertThat(allSessions).hasSameSizeAs(rpm.getInstalledPackages(0));
   }
@@ -350,11 +359,11 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldReturnProviderInfos() throws Exception {
-    ProviderInfo packageInfo1 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
+    ProviderInfo packageInfo1 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
     assertThat(packageInfo1.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo1.authority).isEqualTo("org.robolectric.authority1");
 
-    ProviderInfo packageInfo2 = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
+    ProviderInfo packageInfo2 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
     assertThat(packageInfo2.packageName).isEqualTo("org.robolectric");
     assertThat(packageInfo2.authority).isEqualTo("org.robolectric.authority2");
   }
@@ -362,7 +371,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldPopulatePermissionsInProviderInfos() throws Exception {
-    ProviderInfo providerInfo = RuntimeEnvironment.application.getPackageManager().getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
+    ProviderInfo providerInfo = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
     assertThat(providerInfo.authority).isEqualTo("org.robolectric.authority2");
 
     assertThat(providerInfo.readPermission).isEqualTo("READ_PERMISSION");
@@ -590,7 +599,7 @@ public class DefaultPackageManagerTest {
   public void shouldAssignTheAppMetaDataFromTheManifest() throws Exception {
     ShadowApplication app = ShadowApplication.getInstance();
     String packageName = app.getAppManifest().getPackageName();
-    ApplicationInfo info = RuntimeEnvironment.application.getPackageManager().getApplicationInfo(packageName, 0);
+    ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
     Bundle meta = info.metaData;
 
     Object metaValue = meta.get("org.robolectric.metaName1");
@@ -711,7 +720,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetApplicationEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
+    PackageManager packageManager = this.packageManager;
 
     assertThat(packageManager.getApplicationEnabledSetting("org.robolectric")).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
 
@@ -723,7 +732,7 @@ public class DefaultPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void testSetComponentEnabledSetting() {
-    PackageManager packageManager = RuntimeEnvironment.application.getPackageManager();
+    PackageManager packageManager = this.packageManager;
 
     ComponentName componentName = new ComponentName(RuntimeEnvironment.application, "org.robolectric.component");
     assertThat(packageManager.getComponentEnabledSetting(componentName)).isEqualTo(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
@@ -740,7 +749,7 @@ public class DefaultPackageManagerTest {
   public void getActivityMetaData() throws Exception {
     Activity activity = setupActivity(ActivityWithMetadata.class);
 
-    ActivityInfo activityInfo = RuntimeEnvironment.application.getPackageManager().getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
+    ActivityInfo activityInfo = packageManager.getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
     assertThat(activityInfo.metaData.get("someName")).isEqualTo("someValue");
   }
 
@@ -799,35 +808,55 @@ public class DefaultPackageManagerTest {
 
   @Test
   public void getNameForUid() {
-    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isNull();
+    assertThat(packageManager.getNameForUid(10)).isNull();
 
     rpm.setNameForUid(10, "a_name");
 
-    assertThat(RuntimeEnvironment.application.getPackageManager().getNameForUid(10)).isEqualTo("a_name");
+    assertThat(packageManager.getNameForUid(10)).isEqualTo("a_name");
   }
 
   @Test
   public void getPackagesForUid() {
-    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).isNull();
+    assertThat(packageManager.getPackagesForUid(10)).isNull();
 
     rpm.setPackagesForUid(10, new String[] {"a_name"});
 
-    assertThat(RuntimeEnvironment.application.getPackageManager().getPackagesForUid(10)).containsExactly("a_name");
+    assertThat(packageManager.getPackagesForUid(10)).containsExactly("a_name");
   }
 
-  /////////////////////////////
-
-  public AndroidManifest newConfigWith(String contents) throws IOException {
-    return newConfigWith("org.robolectric", contents);
+  @Test(expected = PackageManager.NameNotFoundException.class)
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_notFound() throws Exception {
+    packageManager.getPermissionInfo("non_existant_permission", 0);
   }
 
-  private AndroidManifest newConfigWith(String packageName, String contents) throws IOException {
-    File f = temporaryFolder.newFile("whatever.xml",
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-            "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
-            "          package=\"" + packageName + "\">\n" +
-            "    " + contents + "\n" +
-            "</manifest>\n");
-    return new AndroidManifest(Fs.newFile(f), null, null);
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_noMetaData() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("some_permission", 0);
+    assertThat(permission.metaData).isNull();
+    assertThat(permission.name).isEqualTo("some_permission");
+    assertThat(permission.descriptionRes).isEqualTo(R.string.test_permission_description);
+    assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
+    assertThat(permission.nonLocalizedLabel).isNullOrEmpty();
+    assertThat(permission.group).isEqualTo("my_permission_group");
+    assertThat(permission.protectionLevel).isEqualTo(PermissionInfo.PROTECTION_DANGEROUS);
+  }
+
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_withMetaData() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("some_permission", PackageManager.GET_META_DATA);
+    assertThat(permission.metaData).isNotNull();
+    assertThat(permission.metaData.getString("meta_data_name")).isEqualTo("meta_data_value");
+  }
+
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_withLiteralLabel() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("permission_with_literal_label", 0);
+    assertThat(permission.labelRes).isEqualTo(0);
+    assertThat(permission.nonLocalizedLabel).isEqualTo("Literal label");
+    assertThat(permission.protectionLevel).isEqualTo(PermissionInfo.PROTECTION_NORMAL);
   }
 }

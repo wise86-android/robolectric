@@ -139,12 +139,12 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public String getInstallerPackageName(String packageName) {
-    return null;
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getInstallerPackageName(packageName);
   }
 
   @Implementation
   public PermissionInfo getPermissionInfo(String name, int flags) throws PackageManager.NameNotFoundException {
-    return null;
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getPermissionInfo(name, flags);
   }
 
   @Implementation(minSdk = M)
@@ -178,6 +178,16 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   @Implementation
   public void setInstallerPackageName(String targetPackage, String installerPackageName) {
 
+  }
+
+  @Implementation
+  public List<ResolveInfo> queryIntentContentProviders(Intent intent, int flags) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).queryIntentContentProviders(intent, flags);
+  }
+
+  @Implementation
+  public String getPermissionControllerPackageName() {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getPermissionControllerPackageName();
   }
 
   @Override
