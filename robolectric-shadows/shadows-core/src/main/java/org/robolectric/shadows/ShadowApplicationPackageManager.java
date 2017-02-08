@@ -260,4 +260,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public int checkSignatures(int uid1, int uid2) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).checkSignatures(uid1, uid2);
   }
+
+  @Implementation
+  public CharSequence getApplicationLabel(ApplicationInfo info) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getApplicationLabel(info);
+  }
 }
