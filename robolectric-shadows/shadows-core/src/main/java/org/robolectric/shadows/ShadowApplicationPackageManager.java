@@ -224,4 +224,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     }
     return out;
   }
+
+  @Implementation
+  public boolean isSafeMode() {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).isSafeMode();
+  }
 }
