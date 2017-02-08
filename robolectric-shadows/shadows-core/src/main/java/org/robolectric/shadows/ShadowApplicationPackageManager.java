@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.*;
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.UserHandle;
 import org.robolectric.RuntimeEnvironment;
@@ -228,5 +229,15 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   @Implementation
   public boolean isSafeMode() {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).isSafeMode();
+  }
+
+  @Implementation
+  public Drawable getApplicationIcon(String packageName) throws PackageManager.NameNotFoundException {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getApplicationIcon(packageName);
+  }
+
+  @Implementation
+  public Drawable getApplicationIcon(ApplicationInfo info) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getApplicationIcon(info);
   }
 }
