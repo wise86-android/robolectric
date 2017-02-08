@@ -246,4 +246,14 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getUserBadgeForDensity(userHandle, i);
   }
 
+  @Implementation
+  public int checkSignatures(String pkg1, String pkg2) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).checkSignatures(pkg1, pkg2);
+  }
+
+  @Implementation
+  public int checkSignatures(int uid1, int uid2) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).checkSignatures(uid1, uid2);
+  }
+
 }
