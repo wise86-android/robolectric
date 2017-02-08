@@ -187,6 +187,11 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public List<ResolveInfo> queryIntentContentProvidersAsUser(Intent intent, int flags, int userId) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).queryIntentContentProvidersAsUser(intent, flags, userId);
+  }
+
+  @Implementation
   public String getPermissionControllerPackageName() {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getPermissionControllerPackageName();
   }
@@ -255,5 +260,4 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public int checkSignatures(int uid1, int uid2) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).checkSignatures(uid1, uid2);
   }
-
 }
