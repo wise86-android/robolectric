@@ -17,6 +17,10 @@ import com.google.common.collect.Iterables;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.StubPackageManager;
 import org.robolectric.manifest.*;
+import org.robolectric.res.AttrResourceLoader;
+import org.robolectric.res.AttributeResource;
+import org.robolectric.res.ResName;
+import org.robolectric.res.ResourceTable;
 import org.robolectric.util.TempDirectory;
 
 import java.io.File;
@@ -47,6 +51,8 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   private final Map<Integer, String[]> packagesForUid = new HashMap<>();
   private boolean queryIntentImplicitly = false;
   private PackageInstaller packageInstaller;
+  private AndroidManifest applicationManifest;
+  private ResourceTable appResourceTable;
 
   @Override
   public PackageInstaller getPackageInstaller() {
@@ -310,6 +316,58 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     intent.setClassName(ris.get(0).activityInfo.packageName, ris.get(0).activityInfo.name);
     return intent;
+  }
+
+  @Override
+  public PermissionInfo getPermissionInfo(String name, int flags) throws NameNotFoundException {
+    PermissionItemData permissionItemData = applicationManifest.getPermissions().get(name);
+    if (permissionItemData == null) {
+      throw new NameNotFoundException(name);
+    }
+
+    PermissionInfo permissionInfo = new PermissionInfo();
+    String packageName = applicationManifest.getPackageName();
+    permissionInfo.packageName = packageName;
+    permissionInfo.name = name;
+    permissionInfo.group = permissionItemData.getPermissionGroup();
+    permissionInfo.protectionLevel = decodeProtectionLevel(permissionItemData.getProtectionLevel());
+
+    String descriptionRef = permissionItemData.getDescription();
+    ResName descResName = AttributeResource.getResourceReference(descriptionRef, packageName, "string");
+    permissionInfo.descriptionRes = appResourceTable.getResourceId(descResName);
+
+    String labelRefOrString = permissionItemData.getLabel();
+    if (AttributeResource.isResourceReference(labelRefOrString)) {
+      ResName labelResName = AttributeResource.getResourceReference(labelRefOrString, packageName, "string");
+      permissionInfo.labelRes = appResourceTable.getResourceId(labelResName);
+    } else {
+      permissionInfo.nonLocalizedLabel = labelRefOrString;
+    }
+
+    if ((flags & GET_META_DATA) != 0) {
+      permissionInfo.metaData = metaDataToBundle(permissionItemData.getMetaData().getValueMap());
+    }
+
+    return permissionInfo;
+  }
+
+  private int decodeProtectionLevel(String protectionLevel) {
+    if (protectionLevel == null) {
+      return PermissionInfo.PROTECTION_NORMAL;
+    }
+
+    switch (protectionLevel) {
+      case "normal":
+        return PermissionInfo.PROTECTION_NORMAL;
+      case "dangerous":
+        return PermissionInfo.PROTECTION_DANGEROUS;
+      case "signature":
+        return PermissionInfo.PROTECTION_SIGNATURE;
+      case "signatureOrSystem":
+        return PermissionInfo.PROTECTION_SIGNATURE_OR_SYSTEM;
+      default:
+        throw new IllegalArgumentException("unknown protection level " + protectionLevel);
+    }
   }
 
   @Override
@@ -795,6 +853,11 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
         }
       }
     });
+  }
+
+  public void setDependencies(AndroidManifest applicationManifest, ResourceTable appResourceTable) {
+    this.applicationManifest = applicationManifest;
+    this.appResourceTable = appResourceTable;
   }
 
   static class IntentComparator implements Comparator<Intent> {

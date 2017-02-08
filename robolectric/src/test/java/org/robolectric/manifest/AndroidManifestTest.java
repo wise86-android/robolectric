@@ -38,6 +38,19 @@ public class AndroidManifestTest {
   }
 
   @Test
+  public void parseManifest_shouldReadPermissions() throws Exception {
+    AndroidManifest config = newConfig("TestAndroidManifestWithPermissions.xml");
+
+    assertThat(config.getPermissions().keySet()).containsExactly("some_permission", "permission_with_literal_label");
+    PermissionItemData permissionItemData = config.getPermissions().get("some_permission");
+    assertThat(permissionItemData.getMetaData().getValueMap()).containsEntry("meta_data_name", "meta_data_value");
+    assertThat(permissionItemData.getName()).isEqualTo("some_permission");
+    assertThat(permissionItemData.getPermissionGroup()).isEqualTo("my_permission_group");
+    assertThat(permissionItemData.getDescription()).isEqualTo("@string/test_permission_description");
+    assertThat(permissionItemData.getProtectionLevel()).isEqualTo("dangerous");
+  }
+
+  @Test
   public void parseManifest_shouldReadBroadcastReceivers() throws Exception {
     AndroidManifest config = newConfig("TestAndroidManifestWithReceivers.xml");
     assertThat(config.getBroadcastReceivers()).hasSize(8);

@@ -933,19 +933,11 @@ public class ShadowPackageManagerTest {
     assertThat(installedApplications.get(1).packageName).isEqualTo("org.other");
   }
 
-  /////////////////////////////
-
-  public AndroidManifest newConfigWith(String contents) throws IOException {
-    return newConfigWith("org.robolectric", contents);
-  }
-
-  private AndroidManifest newConfigWith(String packageName, String contents) throws IOException {
-    File f = temporaryFolder.newFile("whatever.xml",
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-            "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
-            "          package=\"" + packageName + "\">\n" +
-            "    " + contents + "\n" +
-            "</manifest>\n");
-    return new AndroidManifest(Fs.newFile(f), null, null);
+  @Test
+  public void getPermissionInfo() throws Exception {
+    PermissionInfo permission = RuntimeEnvironment.application.getPackageManager().getPermissionInfo("some_permission", 0);
+    assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
+    assertThat(permission.descriptionRes).isEqualTo(R.string.test_permission_description);
+    assertThat(permission.name).isEqualTo("test_permission");
   }
 }

@@ -65,6 +65,7 @@ public class AndroidManifest {
   private int versionCode;
   private String versionName;
   private int applicationFlags;
+  private final Map<String, PermissionItemData> permissions = new HashMap<>();
   private final List<ContentProviderData> providers = new ArrayList<>();
   private final List<BroadcastReceiverData> receivers = new ArrayList<>();
   private final Map<String, ServiceData> serviceDatas = new LinkedHashMap<>();
@@ -165,6 +166,7 @@ public class AndroidManifest {
         parseApplicationMetaData(manifestDocument);
         parseContentProviders(manifestDocument);
         parseUsedPermissions(manifestDocument);
+        parsePermissions(manifestDocument);
       } catch (Exception ignored) {
         ignored.printStackTrace();
       }
@@ -284,6 +286,25 @@ public class AndroidManifest {
         service.setPermission(permissionItem.getTextContent());
       }
       serviceDatas.put(serviceName, service);
+    }
+  }
+
+  private void parsePermissions(final Document manifestDocument) {
+    NodeList elementsByTagName = manifestDocument.getElementsByTagName("permission");
+
+    for (int i = 0; i < elementsByTagName.getLength(); i++) {
+      Node permissionNode = elementsByTagName.item(i);
+      final MetaData metaData = new MetaData(getChildrenTags(permissionNode, "meta-data"));
+      String name = getAttributeValue(permissionNode, "android:name");
+      permissions.put(name,
+          new PermissionItemData(
+              name,
+              getAttributeValue(permissionNode, "android:label"),
+              getAttributeValue(permissionNode, "android:description"),
+              getAttributeValue(permissionNode, "android:permissionGroup"),
+              getAttributeValue(permissionNode, "android:protectionLevel"),
+              metaData
+          ));
     }
   }
 
@@ -659,5 +680,10 @@ public class AndroidManifest {
   public List<String> getUsedPermissions() {
     parseAndroidManifest();
     return usedPermissions;
+  }
+
+  public Map<String, PermissionItemData> getPermissions() {
+    parseAndroidManifest();
+    return permissions;
   }
 }
