@@ -240,4 +240,10 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public Drawable getApplicationIcon(ApplicationInfo info) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getApplicationIcon(info);
   }
+
+  @Implementation
+  public Drawable getUserBadgeForDensity(UserHandle userHandle, int i) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getUserBadgeForDensity(userHandle, i);
+  }
+
 }
