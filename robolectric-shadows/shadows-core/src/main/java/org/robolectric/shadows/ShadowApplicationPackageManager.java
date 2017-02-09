@@ -2,6 +2,7 @@ package org.robolectric.shadows;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.UserIdInt;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.*;
@@ -86,6 +87,17 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
+  public ProviderInfo resolveContentProvider(String name, int flags) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).resolveContentProvider(name, flags);
+
+  }
+
+  @Implementation
+  public ProviderInfo resolveContentProviderAsUser(String name, int flags, @UserIdInt int userId) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).resolveContentProviderAsUser(name, flags, userId);
+  }
+
+  @Implementation
   public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
     return RuntimeEnvironment.getRobolectricPackageManager().getPackageInfo(packageName, flags);
   }
@@ -126,11 +138,11 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   }
 
   @Implementation
-  public Resources getResourcesForApplication(@NonNull ApplicationInfo app) throws PackageManager.NameNotFoundException {
-    if (app.packageName.equals(RuntimeEnvironment.application.getPackageName())) {
+  public Resources getResourcesForApplication(@NonNull ApplicationInfo applicationInfo) throws PackageManager.NameNotFoundException {
+    if (RuntimeEnvironment.application.getPackageName().equals(applicationInfo.packageName)) {
       return RuntimeEnvironment.application.getResources();
     }
-    throw new PackageManager.NameNotFoundException(app.packageName);
+    throw new PackageManager.NameNotFoundException(applicationInfo.packageName);
   }
 
   @Implementation
@@ -178,7 +190,7 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public void setInstallerPackageName(String targetPackage, String installerPackageName) {
-
+    ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).setInstallerPackageName(targetPackage, installerPackageName);
   }
 
   @Implementation
@@ -196,7 +208,6 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getPermissionControllerPackageName();
   }
 
-  @Override
   @Implementation(maxSdk = JELLY_BEAN)
   public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
     RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(packageName, UserHandle.myUserId(), observer);
@@ -208,7 +219,6 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
     RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(pkgName, uid, callback);
   }
 
-  @Override
   @Implementation(minSdk = N)
   public void getPackageSizeInfoAsUser(String pkgName, int uid, final IPackageStatsObserver callback) {
     RuntimeEnvironment.getRobolectricPackageManager().getPackageSizeInfo(pkgName, uid, callback);
@@ -264,5 +274,10 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   @Implementation
   public CharSequence getApplicationLabel(ApplicationInfo info) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getApplicationLabel(info);
+  }
+
+  @Implementation
+  public Intent getLaunchIntentForPackage(String packageName) {
+    return RuntimeEnvironment.getRobolectricPackageManager().getLaunchIntentForPackage(packageName);
   }
 }

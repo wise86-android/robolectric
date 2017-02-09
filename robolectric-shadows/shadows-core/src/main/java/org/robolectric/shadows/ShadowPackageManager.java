@@ -19,69 +19,13 @@ import java.util.Map;
 import static android.os.Build.VERSION_CODES.*;
 
 @Implements(PackageManager.class)
-public class ShadowPackageManager implements RobolectricPackageManager {
+abstract public class ShadowPackageManager implements RobolectricPackageManager {
 
   protected Map<String, Boolean> permissionRationaleMap = new HashMap<>();
   protected List<FeatureInfo> systemAvailableFeatures = new LinkedList<>();
   private Map<String, PackageInfo> packageArchiveInfo = new HashMap<>();
   protected final Map<Integer, Integer> verificationResults = new HashMap<>();
   protected final Map<String, String> currentToCanonicalNames = new HashMap<>();
-
-  @Override
-  public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getPackageInfo(packageName, flags);
-  }
-
-  @Override
-  public ApplicationInfo getApplicationInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getApplicationInfo(packageName, flags);
-  }
-
-  @Override
-  @Implementation
-  public ActivityInfo getActivityInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getActivityInfo(className, flags);
-  }
-
-  @Override
-  public ActivityInfo getReceiverInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getReceiverInfo(className, flags);
-  }
-
-  @Override
-  public ServiceInfo getServiceInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getServiceInfo(className, flags);
-  }
-
-  @Override
-  public List<PackageInfo> getInstalledPackages(int flags) {
-    throw new IllegalStateException("This method must be implemented in ShadowApplicationPackageManager");
-  }
-
-  @Override
-  public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().queryIntentActivities(intent, flags);
-  }
-
-  @Override
-  public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().queryIntentServices(intent, flags);
-  }
-
-  @Override
-  public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().queryBroadcastReceivers(intent, flags);
-  }
-
-  @Override
-  public ResolveInfo resolveActivity(Intent intent, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().resolveActivity(intent, flags);
-  }
-
-  @Override
-  public ResolveInfo resolveService(Intent intent, int flags) {
-    return RuntimeEnvironment.getRobolectricPackageManager().resolveService(intent, flags);
-  }
 
   @Override
   public void addResolveInfoForIntent(Intent intent, List<ResolveInfo> info) {
@@ -119,28 +63,8 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   }
 
   @Override
-  public Drawable getApplicationIcon(String packageName) throws PackageManager.NameNotFoundException {
-    return RuntimeEnvironment.getRobolectricPackageManager().getApplicationIcon(packageName);
-  }
-
-  @Override
   public void setApplicationIcon(String packageName, Drawable drawable) {
     RuntimeEnvironment.getRobolectricPackageManager().setApplicationIcon(packageName, drawable);
-  }
-
-  @Override
-  public Intent getLaunchIntentForPackage(String packageName) {
-    return RuntimeEnvironment.getRobolectricPackageManager().getLaunchIntentForPackage(packageName);
-  }
-
-  @Override
-  public CharSequence getApplicationLabel(ApplicationInfo info) {
-    return RuntimeEnvironment.getRobolectricPackageManager().getApplicationLabel(info);
-  }
-
-  @Override
-  public void setComponentEnabledSetting(ComponentName componentName, int newState, int flags) {
-    RuntimeEnvironment.getRobolectricPackageManager().setComponentEnabledSetting(componentName, newState, flags);
   }
 
   @Override
@@ -184,11 +108,6 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   }
 
   @Override
-  public boolean hasSystemFeature(String name) {
-    return RuntimeEnvironment.getRobolectricPackageManager().hasSystemFeature(name);
-  }
-
-  @Override
   public void setSystemFeature(String name, boolean supported) {
     RuntimeEnvironment.getRobolectricPackageManager().setSystemFeature(name, supported);
   }
@@ -201,11 +120,6 @@ public class ShadowPackageManager implements RobolectricPackageManager {
   @Override
   public Drawable getDrawable(String packageName, int resourceId, ApplicationInfo applicationInfo) {
     return RuntimeEnvironment.getRobolectricPackageManager().getDrawable(packageName, resourceId, applicationInfo);
-  }
-
-  @Override
-  public int checkPermission(String permName, String pkgName) {
-    return RuntimeEnvironment.getRobolectricPackageManager().checkPermission(permName, pkgName);
   }
 
   @Override
@@ -273,15 +187,96 @@ public class ShadowPackageManager implements RobolectricPackageManager {
     currentToCanonicalNames.put(currentName, canonicalName);
   }
 
-  @Implementation(maxSdk = JELLY_BEAN)
-  public void getPackageSizeInfo(String packageName, IPackageStatsObserver observer) {
-  }
+  @Implements(className = "org.robolectric.res.builder.StubPackageManager")
+  public static class ShadowStubPackageManager extends ShadowPackageManager {
+    @Override
+    public PackageInfo getPackageInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
+      return null;
+    }
 
-  @Implementation(minSdk = JELLY_BEAN_MR1, maxSdk = M)
-  public void getPackageSizeInfo(String pkgName, int uid, final IPackageStatsObserver callback) {
-  }
+    @Override
+    public ApplicationInfo getApplicationInfo(String packageName, int flags) throws PackageManager.NameNotFoundException {
+      return null;
+    }
 
-  @Implementation(minSdk = N)
-  public void getPackageSizeInfoAsUser(String pkgName, int uid, final IPackageStatsObserver callback) {
+    @Override
+    public ActivityInfo getActivityInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+      return null;
+    }
+
+    @Override
+    public ActivityInfo getReceiverInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+      return null;
+    }
+
+    @Override
+    public ServiceInfo getServiceInfo(ComponentName className, int flags) throws PackageManager.NameNotFoundException {
+      return null;
+    }
+
+    @Override
+    public List<PackageInfo> getInstalledPackages(int flags) {
+      return null;
+    }
+
+    @Override
+    public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
+      return null;
+    }
+
+    @Override
+    public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
+      return null;
+    }
+
+    @Override
+    public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags) {
+      return null;
+    }
+
+    @Override
+    public ResolveInfo resolveActivity(Intent intent, int flags) {
+      return null;
+    }
+
+    @Override
+    public ResolveInfo resolveService(Intent intent, int flags) {
+      return null;
+    }
+
+    @Override
+    public Drawable getApplicationIcon(String packageName) throws PackageManager.NameNotFoundException {
+      return null;
+    }
+
+    @Override
+    public Intent getLaunchIntentForPackage(String packageName) {
+      return null;
+    }
+
+    @Override
+    public CharSequence getApplicationLabel(ApplicationInfo info) {
+      return null;
+    }
+
+    @Override
+    public void setComponentEnabledSetting(ComponentName componentName, int newState, int flags) {
+
+    }
+
+    @Override
+    public boolean hasSystemFeature(String name) {
+      return false;
+    }
+
+    @Override
+    public int checkPermission(String permName, String pkgName) {
+      return 0;
+    }
+
+    @Override
+    public void getPackageSizeInfo(String pkgName, int uid, IPackageStatsObserver callback) {
+
+    }
   }
 }

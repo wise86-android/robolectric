@@ -332,13 +332,13 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldReturnProviderInfos() throws Exception {
-    ProviderInfo packageInfo1 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
-    assertThat(packageInfo1.packageName).isEqualTo("org.robolectric");
-    assertThat(packageInfo1.authority).isEqualTo("org.robolectric.authority1");
+    ProviderInfo providerInfo1 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, ".tester.FullyQualifiedClassName"), 0);
+    assertThat(providerInfo1.packageName).isEqualTo("org.robolectric");
+    assertThat(providerInfo1.authority).isEqualTo("org.robolectric.authority1");
 
-    ProviderInfo packageInfo2 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
-    assertThat(packageInfo2.packageName).isEqualTo("org.robolectric");
-    assertThat(packageInfo2.authority).isEqualTo("org.robolectric.authority2");
+    ProviderInfo providerInfo2 = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.tester.PartiallyQualifiedClassName"), 0);
+    assertThat(providerInfo2.packageName).isEqualTo("org.robolectric");
+    assertThat(providerInfo2.authority).isEqualTo("org.robolectric.authority2");
   }
 
   @Test
@@ -355,6 +355,14 @@ public class ShadowPackageManagerTest {
     assertThat(providerInfo.pathPermissions[0].getType()).isEqualTo(PathPermission.PATTERN_SIMPLE_GLOB);
     assertThat(providerInfo.pathPermissions[0].getReadPermission()).isEqualTo("PATH_READ_PERMISSION");
     assertThat(providerInfo.pathPermissions[0].getWritePermission()).isEqualTo("PATH_WRITE_PERMISSION");
+  }
+
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
+  public void resolveContentProvider_shouldResolveByPackageName() throws Exception {
+    ProviderInfo providerInfo = packageManager.resolveContentProvider("org.robolectric.authority1", 0);
+    assertThat(providerInfo.packageName).isEqualTo("org.robolectric");
+    assertThat(providerInfo.authority).isEqualTo("org.robolectric.authority1");
   }
 
   @Test
@@ -933,11 +941,70 @@ public class ShadowPackageManagerTest {
     assertThat(installedApplications.get(1).packageName).isEqualTo("org.other");
   }
 
+  @Test(expected = PackageManager.NameNotFoundException.class)
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_notFound() throws Exception {
+    packageManager.getPermissionInfo("non_existant_permission", 0);
+  }
+
   @Test
-  public void getPermissionInfo() throws Exception {
-    PermissionInfo permission = RuntimeEnvironment.application.getPackageManager().getPermissionInfo("some_permission", 0);
-    assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_noMetaData() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("some_permission", 0);
+    assertThat(permission.metaData).isNull();
+    assertThat(permission.name).isEqualTo("some_permission");
     assertThat(permission.descriptionRes).isEqualTo(R.string.test_permission_description);
-    assertThat(permission.name).isEqualTo("test_permission");
+    assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
+    assertThat(permission.nonLocalizedLabel).isNullOrEmpty();
+    assertThat(permission.group).isEqualTo("my_permission_group");
+    assertThat(permission.protectionLevel).isEqualTo(PermissionInfo.PROTECTION_DANGEROUS);
+  }
+
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_withMetaData() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("some_permission", PackageManager.GET_META_DATA);
+    assertThat(permission.metaData).isNotNull();
+    assertThat(permission.metaData.getString("meta_data_name")).isEqualTo("meta_data_value");
+  }
+
+  @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
+  public void getPermissionInfo_withLiteralLabel() throws Exception {
+    PermissionInfo permission = packageManager.getPermissionInfo("permission_with_literal_label", 0);
+    assertThat(permission.labelRes).isEqualTo(0);
+    assertThat(permission.nonLocalizedLabel).isEqualTo("Literal label");
+    assertThat(permission.protectionLevel).isEqualTo(PermissionInfo.PROTECTION_NORMAL);
+  }
+
+  @Test
+  public void getDefaultActivityIcon() {
+    assertThat(packageManager.getDefaultActivityIcon()).isNotNull();
+  }
+
+  @Test
+  public void addPackageShouldUseUidToProvidePackageName() throws Exception {
+    PackageInfo packageInfoOne = new PackageInfo();
+    packageInfoOne.packageName = "package.one";
+    packageInfoOne.applicationInfo = new ApplicationInfo();
+    packageInfoOne.applicationInfo.uid = 1234;
+    packageInfoOne.applicationInfo.packageName = packageInfoOne.packageName;
+    shadowPackageManager.addPackage(packageInfoOne);
+
+    PackageInfo packageInfoTwo = new PackageInfo();
+    packageInfoTwo.packageName = "package.two";
+    packageInfoTwo.applicationInfo = new ApplicationInfo();
+    packageInfoTwo.applicationInfo.uid = 1234;
+    packageInfoTwo.applicationInfo.packageName = packageInfoTwo.packageName;
+    shadowPackageManager.addPackage(packageInfoTwo);
+
+    assertThat(packageManager.getPackagesForUid(1234)).containsExactlyInAnyOrder("package.one", "package.two");
+  }
+
+  @Test
+  public void installerPackageName() throws Exception {
+    packageManager.setInstallerPackageName("target.package", "installer.package");
+
+    assertThat(packageManager.getInstallerPackageName("target.package")).isEqualTo("installer.package");
   }
 }

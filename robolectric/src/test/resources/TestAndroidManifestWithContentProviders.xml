@@ -12,7 +12,7 @@
 
     <provider
       android:name="org.robolectric.util.ContentProviderControllerTest$MyContentProvider"
-      android:authorities="org.robolectric.authority2"
+      android:authorities="org.robolectric.authority2;org.robolectric.authority3"
       android:permission="PERMISSION"
       android:readPermission="READ_PERMISSION"
       android:writePermission="WRITE_PERMISSION"
