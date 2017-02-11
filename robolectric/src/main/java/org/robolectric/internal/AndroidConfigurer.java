@@ -48,6 +48,7 @@ public class AndroidConfigurer {
         .doNotAcquireClass(TestLifecycle.class)
         .doNotAcquireClass(AndroidManifest.class)
         .doNotAcquireClass(RobolectricTestRunner.class)
+        .doNotAcquireClass(RobolectricTestRunner.InternalShared.class)
         .doNotAcquireClass(RobolectricTestRunner.HelperTestRunner.class)
         .doNotAcquireClass(ResourcePath.class)
         .doNotAcquireClass(ResourceTable.class)

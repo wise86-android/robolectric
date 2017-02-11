@@ -7,7 +7,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Suite;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
-import org.junit.runners.model.Statement;
 import org.junit.runners.model.TestClass;
 import org.robolectric.internal.DeepCloner;
 import org.robolectric.internal.SandboxTestRunner;
@@ -119,7 +118,7 @@ public final class ParameterizedRobolectricTestRunner extends Suite {
     @Override
     protected SandboxTestRunner.HelperTestRunner getHelperTestRunner(Class bootstrappedTestClass) {
       try {
-        return new HelperTestRunner(bootstrappedTestClass) {
+        return new HelperTestRunner(bootstrappedTestClass, shared) {
           @Override
           protected void validateConstructor(List<Throwable> errors) {
             TestClassRunnerForParameters.this.validateOnlyOneConstructor(errors);
