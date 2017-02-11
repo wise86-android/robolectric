@@ -1,15 +1,15 @@
 package org.robolectric.internal;
 
 import org.jetbrains.annotations.NotNull;
-import org.robolectric.TestLifecycle;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration;
-import org.robolectric.internal.bytecode.RobolectricInternals;
 import org.robolectric.internal.bytecode.SandboxClassLoader;
 import org.robolectric.internal.dependency.DependencyResolver;
 import org.robolectric.util.Pair;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -57,6 +57,7 @@ public class SandboxFactory {
   private static class ParentClassLoader extends URLClassLoader {
     private final InstrumentationConfiguration instrumentationConfig;
     private final URLClassLoader originalClassLoader;
+    private final Map<String, Package> packages = new HashMap<>();
 
     public ParentClassLoader(URLClassLoader systemClassLoader, InstrumentationConfiguration instrumentationConfig) {
       super(systemClassLoader.getURLs(), systemClassLoader.getParent());
@@ -68,9 +69,31 @@ public class SandboxFactory {
     protected Class<?> findClass(String name) throws ClassNotFoundException {
       boolean fromParent = !instrumentationConfig.shouldAcquire(name);
       if (fromParent) {
-        return originalClassLoader.loadClass(name);
+        Class<?> theClass = originalClassLoader.loadClass(name);
+        if (theClass != null) {
+          synchronized (packages) {
+            Package thePackage = theClass.getPackage();
+            packages.put(thePackage.getName(), thePackage);
+          }
+        }
+        return theClass;
       } else {
         throw new ClassNotFoundException(name);
+      }
+    }
+
+    @Override
+    protected Package getPackage(String name) {
+      synchronized (packages) {
+        return packages.get(name);
+      }
+    }
+
+    @Override
+    protected Package[] getPackages() {
+      synchronized (packages) {
+        HashSet<Package> pkgSet = new HashSet<>(this.packages.values());
+        return pkgSet.toArray(new Package[pkgSet.size()]);
       }
     }
   }
