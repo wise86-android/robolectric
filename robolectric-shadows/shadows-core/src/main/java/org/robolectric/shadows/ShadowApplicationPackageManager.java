@@ -127,7 +127,7 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
 
   @Implementation
   public Resources getResourcesForApplication(@NonNull ApplicationInfo app) throws PackageManager.NameNotFoundException {
-    if (app.packageName.equals(RuntimeEnvironment.application.getPackageName())) {
+    if (RuntimeEnvironment.application.getPackageName().equals(app.packageName)) {
       return RuntimeEnvironment.application.getResources();
     }
     throw new PackageManager.NameNotFoundException(app.packageName);
