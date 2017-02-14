@@ -10,10 +10,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -24,19 +21,14 @@ import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.TestRunners;
 import org.robolectric.annotation.Config;
-import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.res.DefaultPackageManagerTest;
-import org.robolectric.res.Fs;
 import org.robolectric.test.TemporaryFolder;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
-import static android.content.pm.PackageManager.VERIFICATION_ALLOW;
+import static android.content.pm.PackageManager.*;
 import static android.os.Build.VERSION_CODES.M;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
@@ -939,5 +931,54 @@ public class ShadowPackageManagerTest {
     assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
     assertThat(permission.descriptionRes).isEqualTo(R.string.test_permission_description);
     assertThat(permission.name).isEqualTo("test_permission");
+  }
+
+  @Test
+  public void checkSignatures_same() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value")));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_MATCH);
+  }
+
+  @Test
+  public void checkSignatures_firstNotSigned() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package"));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value")));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_FIRST_NOT_SIGNED);
+  }
+
+  @Test
+  public void checkSignatures_secondNotSigned() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package"));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_SECOND_NOT_SIGNED);
+  }
+
+  @Test
+  public void checkSignatures_neitherSigned() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package"));
+    shadowPackageManager.addPackage(newPackageInfo("second.package"));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NEITHER_SIGNED);
+  }
+
+  @Test
+  public void checkSignatures_noMatch() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("other_value")));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NO_MATCH);
+  }
+
+  @Test
+  public void checkSignatures_noMatch_mustBeExact() throws Exception {
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value"), new Signature("another_signature")));
+    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NO_MATCH);
+  }
+
+  private static PackageInfo newPackageInfo(String packageName, Signature... signatures) {
+    PackageInfo firstPackageInfo = new PackageInfo();
+    firstPackageInfo.packageName = packageName;
+    firstPackageInfo.signatures = signatures;
+    return firstPackageInfo;
   }
 }

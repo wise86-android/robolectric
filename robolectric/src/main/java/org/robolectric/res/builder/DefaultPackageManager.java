@@ -775,7 +775,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
         TempDirectory.destroy(Paths.get(info.applicationInfo.dataDir));
       }
     }
-  }
+  }A
 
   @Override
   public void setNameForUid(int uid, String name) {
