@@ -265,4 +265,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public List<PermissionInfo> queryPermissionsByGroup(String group, int flags) throws PackageManager.NameNotFoundException {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).queryPermissionsByGroup(group, flags);
   }
+
+  @Implementation
+  public ProviderInfo resolveContentProvider(String name, int flags) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).resolveContentProvider(name, flags);
+  }
 }
