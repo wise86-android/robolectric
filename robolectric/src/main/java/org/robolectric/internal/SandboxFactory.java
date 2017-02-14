@@ -8,8 +8,6 @@ import org.robolectric.util.Pair;
 
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -50,51 +48,7 @@ public class SandboxFactory {
   @NotNull
   public ClassLoader createClassLoader(InstrumentationConfiguration instrumentationConfig, URL... urls) {
     URLClassLoader systemClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-    ClassLoader parent = new ParentClassLoader(systemClassLoader, instrumentationConfig);
-    return new SandboxClassLoader(instrumentationConfig, parent, urls);
+    return new SandboxClassLoader(systemClassLoader, instrumentationConfig, urls);
   }
 
-  private static class ParentClassLoader extends URLClassLoader {
-    private final InstrumentationConfiguration instrumentationConfig;
-    private final URLClassLoader originalClassLoader;
-    private final Map<String, Package> packages = new HashMap<>();
-
-    public ParentClassLoader(URLClassLoader systemClassLoader, InstrumentationConfiguration instrumentationConfig) {
-      super(systemClassLoader.getURLs(), systemClassLoader.getParent());
-      this.originalClassLoader = systemClassLoader;
-      this.instrumentationConfig = instrumentationConfig;
-    }
-
-    @Override
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
-      boolean fromParent = !instrumentationConfig.shouldAcquire(name);
-      if (fromParent) {
-        Class<?> theClass = originalClassLoader.loadClass(name);
-        if (theClass != null) {
-          synchronized (packages) {
-            Package thePackage = theClass.getPackage();
-            packages.put(thePackage.getName(), thePackage);
-          }
-        }
-        return theClass;
-      } else {
-        throw new ClassNotFoundException(name);
-      }
-    }
-
-    @Override
-    protected Package getPackage(String name) {
-      synchronized (packages) {
-        return packages.get(name);
-      }
-    }
-
-    @Override
-    protected Package[] getPackages() {
-      synchronized (packages) {
-        HashSet<Package> pkgSet = new HashSet<>(this.packages.values());
-        return pkgSet.toArray(new Package[pkgSet.size()]);
-      }
-    }
-  }
 }

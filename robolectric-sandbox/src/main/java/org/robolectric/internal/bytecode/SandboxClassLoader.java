@@ -52,19 +52,21 @@ import static org.objectweb.asm.Type.VOID;
 /**
  * Class loader that modifies the bytecode of Android classes to insert calls to Robolectric's shadow classes.
  */
-public class SandboxClassLoader extends ClassLoader implements Opcodes {
-
+public class SandboxClassLoader extends URLClassLoader implements Opcodes {
+  private final URLClassLoader systemClassLoader;
   private final URLClassLoader urls;
   private final InstrumentationConfiguration config;
   private final Map<String, String> classesToRemap;
   private final Set<MethodRef> methodsToIntercept;
 
   public SandboxClassLoader(InstrumentationConfiguration config) {
-    this(config, ClassLoader.getSystemClassLoader());
+    this(null, config);
   }
 
-  public SandboxClassLoader(InstrumentationConfiguration config, ClassLoader parent, URL... urls) {
-    super(parent);
+  public SandboxClassLoader(URLClassLoader systemClassLoader, InstrumentationConfiguration config, URL... urls) {
+    super(systemClassLoader.getURLs(), systemClassLoader.getParent());
+    this.systemClassLoader = systemClassLoader;
+
     this.config = config;
     this.urls = new URLClassLoader(urls, null);
     classesToRemap = convertToSlashes(config.classNameTranslations());
@@ -88,11 +90,57 @@ public class SandboxClassLoader extends ClassLoader implements Opcodes {
     if (fromUrlsClassLoader != null) {
       return fromUrlsClassLoader;
     }
+
+    System.out.println("Didn't find " + resName + " in local urls!");
     return super.getResourceAsStream(resName);
   }
 
   @Override
-  protected Class<?> findClass(final String className) throws ClassNotFoundException {
+  protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    Class<?> aClass = super.loadClass(name, resolve);
+//    System.out.println(name + " -- " + aClass.getClassLoader());
+    return aClass;
+  }
+
+  @Override
+  protected Class<?> findClass(String name) throws ClassNotFoundException {
+    if (InstrumentationConfiguration.DEPRECATED_CLASSES_TO_ACQUIRE.contains(name)) {
+      return super.findClass(name);
+    }
+
+    if (name.startsWith("org.junit.")
+        || name.startsWith("org.robolectric.internal.")
+        || name.startsWith("org.robolectric.annotation.")
+        || name.startsWith("org.robolectric.res.")
+        || name.startsWith("org.robolectric.util.")
+        || name.startsWith("org.robolectric.manifest.")
+        || name.equals("org.robolectric.TestLifecycle")
+
+        || name.startsWith("com.almworks.sqlite4java") // Fix #958: SQLite native library must be loaded once.
+        ) {
+      return systemClassLoader.loadClass(name);
+    }
+
+    String classFilename = name.replace('.', '/') + ".class";
+    InputStream classStream = urls.getResourceAsStream(classFilename);
+    if (classStream != null) {
+      return instrumentClass(name, classStream);
+    } else {
+      return super.findClass(name);
+    }
+
+//    if (name.startsWith("android.")
+//        || name.startsWith("dalvik.")
+//        || name.startsWith("com.android.")
+//        || name.startsWith("libcore.")
+//        ) {
+//      return instrumentClass(name);
+//    } else {
+//      return super.findClass(name);
+//    }
+  }
+
+  protected Class<?> instrumentClass(String className, InputStream classStream) throws ClassNotFoundException {
     final byte[] origClassBytes = getByteCode(className);
 
     ClassNode classNode = new ClassNode(Opcodes.ASM4) {
@@ -109,7 +157,12 @@ public class SandboxClassLoader extends ClassLoader implements Opcodes {
       }
     };
 
-    final ClassReader classReader = new ClassReader(origClassBytes);
+    final ClassReader classReader;
+    try {
+      classReader = new ClassReader(classStream);
+    } catch (IOException e) {
+      throw new ClassNotFoundException(className, e);
+    }
     classReader.accept(classNode, 0);
 
     classNode.interfaces.add(Type.getInternalName(ShadowedObject.class));

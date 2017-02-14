@@ -24,9 +24,9 @@ import org.robolectric.android.AndroidInterceptors;
 import org.robolectric.internal.bytecode.ClassHandler;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration;
 import org.robolectric.internal.bytecode.InstrumentationConfiguration.Builder;
+import org.robolectric.internal.bytecode.SandboxClassLoader;
 import org.robolectric.internal.bytecode.Interceptor;
 import org.robolectric.internal.bytecode.Sandbox;
-import org.robolectric.internal.bytecode.SandboxClassLoader;
 import org.robolectric.internal.bytecode.ShadowMap;
 import org.robolectric.internal.bytecode.ShadowWrangler;
 import org.robolectric.internal.dependency.CachedDependencyResolver;
@@ -74,12 +74,10 @@ public class RobolectricTestRunner extends SandboxTestRunner {
   private final SdkPicker sdkPicker;
   private final ConfigMerger configMerger;
 
-  public static class InternalShared {
+  public static class RoboContext implements Context {
     public TestLifecycle<Application> testLifecycle;
     public ParallelUniverseInterface parallelUniverseInterface;
   }
-
-  public final InternalShared shared = new InternalShared();
 
   private transient DependencyResolver dependencyResolver;
 
@@ -100,11 +98,21 @@ public class RobolectricTestRunner extends SandboxTestRunner {
     this.sdkPicker = createSdkPicker();
   }
 
+  @NotNull
+  @Override
+  protected Context createContext() {
+    return new RoboContext();
+  }
+
+  protected RoboContext getContext() {
+    return (RoboContext) super.getContext();
+  }
+
   @SuppressWarnings("unchecked")
   private void assureTestLifecycle(SdkEnvironment sdkEnvironment) {
     try {
       ClassLoader robolectricClassLoader = sdkEnvironment.getRobolectricClassLoader();
-      shared.testLifecycle = (TestLifecycle) robolectricClassLoader.loadClass(getTestLifecycleClass().getName()).newInstance();
+      getContext().testLifecycle = (TestLifecycle) robolectricClassLoader.loadClass(getTestLifecycleClass().getName()).newInstance();
     } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
@@ -299,14 +307,15 @@ public class RobolectricTestRunner extends SandboxTestRunner {
   }
 
   private void beforeTest(SdkEnvironment sdkEnvironment, RobolectricFrameworkMethod method, Method bootstrappedMethod) throws Throwable {
-    shared.parallelUniverseInterface = getHooksInterface(sdkEnvironment);
+    RoboContext context = getContext();
+    context.parallelUniverseInterface = getHooksInterface(sdkEnvironment);
     assureTestLifecycle(sdkEnvironment);
 
     final Config config = method.config;
     final AndroidManifest appManifest = method.getAppManifest();
 
-    shared.parallelUniverseInterface.setSdkConfig(sdkEnvironment.getSdkConfig());
-    shared.parallelUniverseInterface.resetStaticState(config);
+    context.parallelUniverseInterface.setSdkConfig(sdkEnvironment.getSdkConfig());
+    context.parallelUniverseInterface.resetStaticState(config);
 
     SdkConfig sdkConfig = method.sdkConfig;
     Class<?> androidBuildVersionClass = sdkEnvironment.bootstrappedClass(Build.VERSION.class);
@@ -316,32 +325,34 @@ public class RobolectricTestRunner extends SandboxTestRunner {
     PackageResourceTable systemResourceTable = sdkEnvironment.getSystemResourceTable(getJarResolver());
     PackageResourceTable appResourceTable = getAppResourceTable(appManifest);
 
-    shared.parallelUniverseInterface.setUpApplicationState(bootstrappedMethod, shared.testLifecycle, appManifest, config, new RoutingResourceTable(getCompiletimeSdkResourceTable(), appResourceTable), new RoutingResourceTable(systemResourceTable, appResourceTable), new RoutingResourceTable(systemResourceTable));
-    shared.testLifecycle.beforeTest(bootstrappedMethod);
+    context.parallelUniverseInterface.setUpApplicationState(bootstrappedMethod, context.testLifecycle, appManifest, config, new RoutingResourceTable(getCompiletimeSdkResourceTable(), appResourceTable), new RoutingResourceTable(systemResourceTable, appResourceTable), new RoutingResourceTable(systemResourceTable));
+    context.testLifecycle.beforeTest(bootstrappedMethod);
   }
 
   @Override
   protected void afterTest(FrameworkMethod method, Method bootstrappedMethod) {
+    RoboContext context = getContext();
     try {
-      shared.parallelUniverseInterface.tearDownApplication();
+      context.parallelUniverseInterface.tearDownApplication();
     } finally {
       try {
         internalAfterTest(bootstrappedMethod);
       } finally {
         Config config = ((RobolectricFrameworkMethod) method).config;
-        shared.parallelUniverseInterface.resetStaticState(config); // afterward too, so stuff doesn't hold on to classes?
+        context.parallelUniverseInterface.resetStaticState(config); // afterward too, so stuff doesn't hold on to classes?
       }
     }
   }
 
   @Override
   protected void finallyAfterTest() {
-    shared.parallelUniverseInterface = null;
+    RoboContext context = getContext();
+    context.parallelUniverseInterface = null;
   }
 
   protected SandboxTestRunner.HelperTestRunner getHelperTestRunner(Class bootstrappedTestClass) {
     try {
-      return new HelperTestRunner(bootstrappedTestClass, shared);
+      return new HelperTestRunner(bootstrappedTestClass);
     } catch (InitializationError initializationError) {
       throw new RuntimeException(initializationError);
     }
@@ -433,17 +444,20 @@ public class RobolectricTestRunner extends SandboxTestRunner {
   }
 
   public void internalAfterTest(final Method method) {
-    shared.testLifecycle.afterTest(method);
+    RoboContext context = getContext();
+    context.testLifecycle.afterTest(method);
   }
 
   @Override
   protected void afterClass() {
-    shared.testLifecycle = null;
+    RoboContext context = getContext();
+    context.testLifecycle = null;
   }
 
   @TestOnly
   boolean allStateIsCleared() {
-    return shared.testLifecycle == null;
+    RoboContext context = getContext();
+    return context.testLifecycle == null;
   }
 
   @Override
@@ -470,24 +484,21 @@ public class RobolectricTestRunner extends SandboxTestRunner {
     }
   }
 
-  public static class HelperTestRunner extends SandboxTestRunner.HelperTestRunner {
-    private final InternalShared shared;
-
-    public HelperTestRunner(Class bootstrappedTestClass, InternalShared shared) throws InitializationError {
+  public static class HelperTestRunner extends SandboxTestRunner.HelperTestRunner<RoboContext> {
+    public HelperTestRunner(Class bootstrappedTestClass) throws InitializationError {
       super(bootstrappedTestClass);
-      this.shared = shared;
     }
 
     @Override protected Object createTest() throws Exception {
       Object test = super.createTest();
-      shared.testLifecycle.prepareTest(test);
+      context.testLifecycle.prepareTest(test);
       return test;
     }
 
     @Override
     protected Statement methodInvoker(FrameworkMethod method, Object test) {
       final Statement invoker = super.methodInvoker(method, test);
-      final InternalShared shared = this.shared;
+      final RoboContext shared = context;
       return new Statement() {
         @Override
         public void evaluate() throws Throwable {

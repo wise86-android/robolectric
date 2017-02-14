@@ -118,7 +118,7 @@ public final class ParameterizedRobolectricTestRunner extends Suite {
     @Override
     protected SandboxTestRunner.HelperTestRunner getHelperTestRunner(Class bootstrappedTestClass) {
       try {
-        return new HelperTestRunner(bootstrappedTestClass, shared) {
+        return new HelperTestRunner(bootstrappedTestClass) {
           @Override
           protected void validateConstructor(List<Throwable> errors) {
             TestClassRunnerForParameters.this.validateOnlyOneConstructor(errors);

@@ -24,6 +24,7 @@ import org.robolectric.internal.bytecode.ShadowMap;
 import org.robolectric.internal.bytecode.ShadowWrangler;
 
 import java.lang.reflect.Method;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,10 +38,21 @@ public class SandboxTestRunner extends BlockJUnit4ClassRunner {
 
   private final Interceptors interceptors;
   private final HashSet<Class<?>> loadedTestClasses = new HashSet<>();
+  private Context context = createContext();
 
   public SandboxTestRunner(Class<?> klass) throws InitializationError {
     super(klass);
     interceptors = new Interceptors(findInterceptors());
+  }
+
+  @NotNull
+  protected Context createContext() {
+    return new Context() {
+    };
+  }
+
+  protected Context getContext() {
+    return context;
   }
 
   @NotNull
@@ -120,7 +132,8 @@ public class SandboxTestRunner extends BlockJUnit4ClassRunner {
   @NotNull
   protected Sandbox getSandbox(FrameworkMethod method) {
     InstrumentationConfiguration instrumentationConfiguration = createClassLoaderConfig(method);
-    ClassLoader sandboxClassLoader = new SandboxClassLoader(instrumentationConfiguration, null); // todo fix
+    URLClassLoader systemClassLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+    ClassLoader sandboxClassLoader = new SandboxClassLoader(systemClassLoader, instrumentationConfiguration);
     Sandbox sandbox = new Sandbox(sandboxClassLoader);
     configureShadows(method, sandbox);
     return sandbox;
@@ -185,6 +198,7 @@ public class SandboxTestRunner extends BlockJUnit4ClassRunner {
         //noinspection unchecked
         Class bootstrappedTestClass = sandbox.bootstrappedClass(getTestClass().getJavaClass());
         HelperTestRunner helperTestRunner = getHelperTestRunner(bootstrappedTestClass);
+        helperTestRunner.context = context;
 
         final Method bootstrappedMethod;
         try {
@@ -233,7 +247,9 @@ public class SandboxTestRunner extends BlockJUnit4ClassRunner {
     }
   }
 
-  protected static class HelperTestRunner extends BlockJUnit4ClassRunner {
+  protected static class HelperTestRunner<T extends Context> extends BlockJUnit4ClassRunner {
+    public T context;
+
     public HelperTestRunner(Class<?> klass) throws InitializationError {
       super(klass);
     }
@@ -272,4 +288,6 @@ public class SandboxTestRunner extends BlockJUnit4ClassRunner {
     return method.getAnnotation(Ignore.class) != null;
   }
 
+  public interface Context {
+  }
 }
