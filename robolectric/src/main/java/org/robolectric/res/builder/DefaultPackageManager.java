@@ -775,7 +775,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
         TempDirectory.destroy(Paths.get(info.applicationInfo.dataDir));
       }
     }
-  }A
+  }
 
   @Override
   public void setNameForUid(int uid, String name) {
@@ -855,12 +855,40 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     });
   }
 
+  @Override
+  public int checkSignatures(String packageName1, String packageName2) {
+    try {
+      PackageInfo packageInfo1 = getPackageInfo(packageName1, GET_SIGNATURES);
+      PackageInfo packageInfo2 = getPackageInfo(packageName2, GET_SIGNATURES);
+      return compareSignature(packageInfo1.signatures, packageInfo2.signatures);
+    } catch (NameNotFoundException e) {
+      return SIGNATURE_UNKNOWN_PACKAGE;
+    }
+  }
+
+  // From com.android.server.pm.PackageManagerService.compareSignatures().
+  private static int compareSignature(Signature[] signatures1, Signature[] signatures2) {
+    if (signatures1 == null) {
+      return (signatures2 == null) ? SIGNATURE_NEITHER_SIGNED
+          : SIGNATURE_FIRST_NOT_SIGNED;
+    }
+    if (signatures2 == null) {
+      return SIGNATURE_SECOND_NOT_SIGNED;
+    }
+    if (signatures1.length != signatures2.length) {
+      return SIGNATURE_NO_MATCH;
+    }
+    HashSet<Signature> signatures1set = new HashSet<>(Arrays.asList(signatures1));
+    HashSet<Signature> signatures2set = new HashSet<>(Arrays.asList(signatures2));
+    return signatures1set.equals(signatures2set) ? SIGNATURE_MATCH : SIGNATURE_NO_MATCH;
+  }
+
   public void setDependencies(AndroidManifest applicationManifest, ResourceTable appResourceTable) {
     this.applicationManifest = applicationManifest;
     this.appResourceTable = appResourceTable;
   }
 
-  static class IntentComparator implements Comparator<Intent> {
+  public static class IntentComparator implements Comparator<Intent> {
 
     @Override
     public int compare(Intent i1, Intent i2) {

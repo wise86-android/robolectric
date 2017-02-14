@@ -21,7 +21,6 @@ import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.TestRunners;
 import org.robolectric.annotation.Config;
-import org.robolectric.res.DefaultPackageManagerTest;
 import org.robolectric.test.TemporaryFolder;
 
 import java.io.ByteArrayInputStream;
@@ -336,7 +335,7 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifestWithContentProviders.xml")
   public void getProviderInfo_shouldPopulatePermissionsInProviderInfos() throws Exception {
-    ProviderInfo providerInfo = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.util.ContentProviderControllerTest$MyContentProvider"), 0);
+    ProviderInfo providerInfo = packageManager.getProviderInfo(new ComponentName(RuntimeEnvironment.application, "org.robolectric.android.controller.ContentProviderControllerTest$MyContentProvider"), 0);
     assertThat(providerInfo.authority).isEqualTo("org.robolectric.authority2");
 
     assertThat(providerInfo.readPermission).isEqualTo("READ_PERMISSION");
@@ -708,7 +707,7 @@ public class ShadowPackageManagerTest {
   @Test
   @Config(manifest = "src/test/resources/TestAndroidManifest.xml")
   public void getActivityMetaData() throws Exception {
-    Activity activity = setupActivity(DefaultPackageManagerTest.ActivityWithMetadata.class);
+    Activity activity = setupActivity(ActivityWithMetadata.class);
 
     ActivityInfo activityInfo = packageManager.getActivityInfo(activity.getComponentName(), PackageManager.GET_ACTIVITIES|PackageManager.GET_META_DATA);
     assertThat(activityInfo.metaData.get("someName")).isEqualTo("someValue");
@@ -926,53 +925,59 @@ public class ShadowPackageManagerTest {
   }
 
   @Test
+  @Config(manifest = "src/test/resources/TestAndroidManifestWithPermissions.xml")
   public void getPermissionInfo() throws Exception {
     PermissionInfo permission = RuntimeEnvironment.application.getPackageManager().getPermissionInfo("some_permission", 0);
     assertThat(permission.labelRes).isEqualTo(R.string.test_permission_label);
     assertThat(permission.descriptionRes).isEqualTo(R.string.test_permission_description);
-    assertThat(permission.name).isEqualTo("test_permission");
+    assertThat(permission.name).isEqualTo("some_permission");
   }
 
   @Test
   public void checkSignatures_same() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
-    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value")));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_MATCH);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("00000000")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("00000000")));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_MATCH);
   }
 
   @Test
   public void checkSignatures_firstNotSigned() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package"));
-    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value")));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_FIRST_NOT_SIGNED);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", (Signature[]) null));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("00000000")));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_FIRST_NOT_SIGNED);
   }
 
   @Test
   public void checkSignatures_secondNotSigned() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
-    shadowPackageManager.addPackage(newPackageInfo("second.package"));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_SECOND_NOT_SIGNED);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("00000000")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", (Signature[]) null));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_SECOND_NOT_SIGNED);
   }
 
   @Test
   public void checkSignatures_neitherSigned() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package"));
-    shadowPackageManager.addPackage(newPackageInfo("second.package"));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NEITHER_SIGNED);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", (Signature[]) null));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", (Signature[]) null));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_NEITHER_SIGNED);
   }
 
   @Test
   public void checkSignatures_noMatch() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
-    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("other_value")));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NO_MATCH);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("00000000")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("FFFFFFFF")));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_NO_MATCH);
   }
 
   @Test
   public void checkSignatures_noMatch_mustBeExact() throws Exception {
-    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("signature_value")));
-    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("signature_value"), new Signature("another_signature")));
-    assertThat(packageManager.checkSignatures("package_1", "package_2")).isEqualTo(SIGNATURE_NO_MATCH);
+    shadowPackageManager.addPackage(newPackageInfo("first.package", new Signature("00000000")));
+    shadowPackageManager.addPackage(newPackageInfo("second.package", new Signature("00000000"), new Signature("FFFFFFFF")));
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_NO_MATCH);
+  }
+
+  @Test
+  public void checkSignatures_unknownPackage() throws Exception {
+    assertThat(packageManager.checkSignatures("first.package", "second.package")).isEqualTo(SIGNATURE_UNKNOWN_PACKAGE);
   }
 
   private static PackageInfo newPackageInfo(String packageName, Signature... signatures) {
