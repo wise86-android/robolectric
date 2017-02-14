@@ -10,6 +10,7 @@
       android:name=".tester.PartiallyQualifiedClassName"
       android:authorities="org.robolectric.authority2"/>
 
+    <!-- add case with multiple authorities (semicolon-separated) -->
     <provider
       android:name="org.robolectric.android.controller.ContentProviderControllerTest$MyContentProvider"
       android:authorities="org.robolectric.authority2"

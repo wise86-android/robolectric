@@ -17,7 +17,6 @@ import com.google.common.collect.Iterables;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.StubPackageManager;
 import org.robolectric.manifest.*;
-import org.robolectric.res.AttrResourceLoader;
 import org.robolectric.res.AttributeResource;
 import org.robolectric.res.ResName;
 import org.robolectric.res.ResourceTable;
@@ -50,6 +49,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   private final Map<String, Integer> applicationEnabledSettingMap = new HashMap<>();
   private final Map<Integer, String> namesForUid = new HashMap<>();
   private final Map<Integer, String[]> packagesForUid = new HashMap<>();
+  private final Map<String, String> packageInstallerMap = new HashMap<>();
   private boolean queryIntentImplicitly = false;
   private PackageInstaller packageInstaller;
   private AndroidManifest applicationManifest;
@@ -129,7 +129,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
         ProviderInfo providerInfo = new ProviderInfo();
         providerInfo.packageName = packageName;
         providerInfo.name = contentProviderData.getClassName();
-        providerInfo.authority = contentProviderData.getAuthority();
+        providerInfo.authority = contentProviderData.getAuthorities(); // todo: support multiple authorities
         providerInfo.readPermission = contentProviderData.getReadPermission();
         providerInfo.writePermission = contentProviderData.getWritePermission();
         providerInfo.pathPermissions = createPathPermissions(contentProviderData.getPathPermissionDatas());
@@ -253,6 +253,21 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   @Override
   public ResolveInfo resolveService(Intent intent, int flags) {
     return resolveActivity(intent, flags);
+  }
+
+  @Override
+  public ProviderInfo resolveContentProvider(String name, int flags) {
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      if (packageInfo.providers == null) continue;
+
+      for (ProviderInfo providerInfo : packageInfo.providers) {
+        if (name.equals(providerInfo.authority)) { // todo: support multiple authorities
+          return providerInfo;
+        }
+      }
+    }
+
+    return null;
   }
 
   @Override
@@ -527,7 +542,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
       packageInfo.providers = new ProviderInfo[cpdata.length];
       for (int i = 0; i < cpdata.length; i++) {
         ProviderInfo info = new ProviderInfo();
-        info.authority = cpdata[i].getAuthority();
+        info.authority = cpdata[i].getAuthorities(); // todo: support multiple authorities
         info.name = cpdata[i].getClassName();
         info.packageName = androidManifest.getPackageName();
         packageInfo.providers[i] = info;
@@ -802,13 +817,30 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     setPackagesForUid(Binder.getCallingUid(), packagesForCallingUid);
   }
 
+  /**
+   * Override value returned by {@link #getPackagesForUid(int)}.
+   */
   public void setPackagesForUid(int uid, String... packagesForCallingUid) {
     this.packagesForUid.put(uid, packagesForCallingUid);
   }
 
   @Override
   public String[] getPackagesForUid(int uid) {
-    return packagesForUid.get(uid);
+    String[] packageNames = packagesForUid.get(uid);
+    if (packageNames != null) {
+      return packageNames;
+    }
+
+    Set<String> results = new HashSet<>();
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      if (packageInfo.applicationInfo != null && packageInfo.applicationInfo.uid == uid) {
+        results.add(packageInfo.packageName);
+      }
+    }
+
+    return results.isEmpty()
+        ? null
+        :results.toArray(new String[results.size()]);
   }
 
   /**
@@ -882,6 +914,16 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     HashSet<Signature> signatures1set = new HashSet<>(Arrays.asList(signatures1));
     HashSet<Signature> signatures2set = new HashSet<>(Arrays.asList(signatures2));
     return signatures1set.equals(signatures2set) ? SIGNATURE_MATCH : SIGNATURE_NO_MATCH;
+  }
+
+  @Override
+  public String getInstallerPackageName(String packageName) {
+    return packageInstallerMap.get(packageName);
+  }
+
+  @Override
+  public void setInstallerPackageName(String targetPackage, String installerPackageName) {
+    packageInstallerMap.put(targetPackage, installerPackageName);
   }
 
   public void setDependencies(AndroidManifest applicationManifest, ResourceTable appResourceTable) {

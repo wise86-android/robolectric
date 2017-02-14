@@ -200,7 +200,7 @@ public class AndroidManifest {
 
     for (Node contentProviderNode : getChildrenTags(application, "provider")) {
       String name = getAttributeValue(contentProviderNode, "android:name");
-      String authority = getAttributeValue(contentProviderNode, "android:authorities");
+      String authorities = getAttributeValue(contentProviderNode, "android:authorities");
       MetaData metaData = new MetaData(getChildrenTags(contentProviderNode, "meta-data"));
 
       List<PathPermissionData> pathPermissionDatas = new ArrayList<>();
@@ -216,7 +216,7 @@ public class AndroidManifest {
 
       providers.add(new ContentProviderData(resolveClassRef(name),
               metaData,
-              authority,
+              authorities,
               getAttributeValue(contentProviderNode, "android:readPermission"),
               getAttributeValue(contentProviderNode, "android:writePermission"),
               pathPermissionDatas));

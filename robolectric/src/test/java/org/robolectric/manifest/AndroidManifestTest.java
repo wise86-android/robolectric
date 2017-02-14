@@ -31,10 +31,10 @@ public class AndroidManifestTest {
     AndroidManifest config = newConfig("TestAndroidManifestWithContentProviders.xml");
 
     assertThat(config.getContentProviders().get(0).getClassName()).isEqualTo("org.robolectric.tester.FullyQualifiedClassName");
-    assertThat(config.getContentProviders().get(0).getAuthority()).isEqualTo("org.robolectric.authority1");
+    assertThat(config.getContentProviders().get(0).getAuthorities()).isEqualTo("org.robolectric.authority1");
 
     assertThat(config.getContentProviders().get(1).getClassName()).isEqualTo("org.robolectric.tester.PartiallyQualifiedClassName");
-    assertThat(config.getContentProviders().get(1).getAuthority()).isEqualTo("org.robolectric.authority2");
+    assertThat(config.getContentProviders().get(1).getAuthorities()).isEqualTo("org.robolectric.authority2");
   }
 
   @Test
