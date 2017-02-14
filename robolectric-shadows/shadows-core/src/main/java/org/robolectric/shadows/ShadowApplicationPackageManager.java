@@ -270,4 +270,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public ProviderInfo resolveContentProvider(String name, int flags) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).resolveContentProvider(name, flags);
   }
+
+  @Implementation
+  public Intent getLaunchIntentForPackage(String packageName) {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).getLaunchIntentForPackage(packageName);
+  }
 }
