@@ -260,4 +260,9 @@ public class ShadowApplicationPackageManager extends ShadowPackageManager {
   public int checkSignatures(int uid1, int uid2) {
     return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).checkSignatures(uid1, uid2);
   }
+
+  @Implementation
+  public List<PermissionInfo> queryPermissionsByGroup(String group, int flags) throws PackageManager.NameNotFoundException {
+    return ((PackageManager)RuntimeEnvironment.getRobolectricPackageManager()).queryPermissionsByGroup(group, flags);
+  }
 }
