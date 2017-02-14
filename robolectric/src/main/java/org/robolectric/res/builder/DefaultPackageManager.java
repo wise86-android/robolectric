@@ -21,6 +21,7 @@ import org.robolectric.res.AttrResourceLoader;
 import org.robolectric.res.AttributeResource;
 import org.robolectric.res.ResName;
 import org.robolectric.res.ResourceTable;
+import org.robolectric.util.ReflectionHelpers;
 import org.robolectric.util.TempDirectory;
 
 import java.io.File;
@@ -57,7 +58,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   @Override
   public PackageInstaller getPackageInstaller() {
     if (packageInstaller == null) {
-      packageInstaller = new PackageInstaller(null, null, null, null, UserHandle.myUserId());
+      packageInstaller = new PackageInstaller(RuntimeEnvironment.application, this, ReflectionHelpers.createNullProxy(IPackageInstaller.class), null, UserHandle.myUserId());
     }
     return packageInstaller;
   }
