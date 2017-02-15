@@ -79,7 +79,7 @@ public class RobolectricTestRunner extends SandboxTestRunner {
     public ParallelUniverseInterface parallelUniverseInterface;
   }
 
-  final InternalShared shared = new InternalShared();
+  public final InternalShared shared = new InternalShared();
 
   private transient DependencyResolver dependencyResolver;
 
