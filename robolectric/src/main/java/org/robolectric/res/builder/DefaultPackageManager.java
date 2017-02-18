@@ -1,121 +1,113 @@
 package org.robolectric.res.builder;
 
+import static android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP;
+import static android.content.pm.ApplicationInfo.FLAG_ALLOW_CLEAR_USER_DATA;
+import static android.content.pm.ApplicationInfo.FLAG_ALLOW_TASK_REPARENTING;
+import static android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE;
+import static android.content.pm.ApplicationInfo.FLAG_HAS_CODE;
+import static android.content.pm.ApplicationInfo.FLAG_KILL_AFTER_RESTORE;
+import static android.content.pm.ApplicationInfo.FLAG_PERSISTENT;
+import static android.content.pm.ApplicationInfo.FLAG_RESIZEABLE_FOR_SCREENS;
+import static android.content.pm.ApplicationInfo.FLAG_RESTORE_ANY_VERSION;
+import static android.content.pm.ApplicationInfo.FLAG_SUPPORTS_LARGE_SCREENS;
+import static android.content.pm.ApplicationInfo.FLAG_SUPPORTS_NORMAL_SCREENS;
+import static android.content.pm.ApplicationInfo.FLAG_SUPPORTS_SCREEN_DENSITIES;
+import static android.content.pm.ApplicationInfo.FLAG_SUPPORTS_SMALL_SCREENS;
+import static android.content.pm.ApplicationInfo.FLAG_TEST_ONLY;
+import static android.content.pm.ApplicationInfo.FLAG_VM_SAFE_MODE;
+import static android.os.Build.VERSION_CODES.N;
+import static java.util.Arrays.asList;
+
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.*;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.IPackageStatsObserver;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageStats;
+import android.content.pm.PathPermission;
+import android.content.pm.PermissionInfo;
+import android.content.pm.ProviderInfo;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
+import android.content.pm.Signature;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PatternMatcher;
+import android.os.RemoteException;
 import android.util.Pair;
-import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import org.robolectric.RuntimeEnvironment;
-import org.robolectric.android.StubPackageManager;
-import org.robolectric.manifest.*;
-import org.robolectric.util.TempDirectory;
-
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.android.StubPackageManager;
+import org.robolectric.manifest.ActivityData;
+import org.robolectric.manifest.AndroidManifest;
+import org.robolectric.manifest.ContentProviderData;
+import org.robolectric.manifest.IntentFilterData;
+import org.robolectric.manifest.PackageItemData;
+import org.robolectric.manifest.PathPermissionData;
+import org.robolectric.manifest.PermissionItemData;
+import org.robolectric.manifest.ServiceData;
+import org.robolectric.res.AttributeResource;
+import org.robolectric.res.ResName;
+import org.robolectric.res.ResourceTable;
+import org.robolectric.util.TempDirectory;
 
-import static android.os.Build.VERSION_CODES.N;
-
+/**
+ * @deprecated use @{link ShadowPackageManager} instead.
+ */
+@Deprecated
 public class DefaultPackageManager extends StubPackageManager implements RobolectricPackageManager {
-
-  private Map<Integer, String> namesForUid = new HashMap<>();
-  private Map<Integer, String[]> packagesForUid = new HashMap<>();
-
-  public static class IntentComparator implements Comparator<Intent> {
-
-    @Override
-    public int compare(Intent i1, Intent i2) {
-      if (i1 == null && i2 == null) return 0;
-      if (i1 == null && i2 != null) return -1;
-      if (i1 != null && i2 == null) return 1;
-      if (i1.equals(i2)) return 0;
-      String action1 = i1.getAction();
-      String action2 = i2.getAction();
-      if (action1 == null && action2 != null) return -1;
-      if (action1 != null && action2 == null) return 1;
-      if (action1 != null && action2 != null) {
-        if (!action1.equals(action2)) {
-          return action1.compareTo(action2);
-        }
-      }
-      Uri data1 = i1.getData();
-      Uri data2 = i2.getData();
-      if (data1 == null && data2 != null) return -1;
-      if (data1 != null && data2 == null) return 1;
-      if (data1 != null && data2 != null) {
-        if (!data1.equals(data2)) {
-          return data1.compareTo(data2);
-        }
-      }
-      ComponentName component1 = i1.getComponent();
-      ComponentName component2 = i2.getComponent();
-      if (component1 == null && component2 != null) return -1;
-      if (component1 != null && component2 == null) return 1;
-      if (component1 != null && component2 != null) {
-        if (!component1.equals(component2)) {
-          return component1.compareTo(component2);
-        }
-      }
-      String package1 = i1.getPackage();
-      String package2 = i2.getPackage();
-      if (package1 == null && package2 != null) return -1;
-      if (package1 != null && package2 == null) return 1;
-      if (package1 != null && package2 != null) {
-        if (!package1.equals(package2)) {
-          return package1.compareTo(package2);
-        }
-      }
-      Set<String> categories1 = i1.getCategories();
-      Set<String> categories2 = i2.getCategories();
-      if (categories1 == null) return categories2 == null ? 0 : -1;
-      if (categories2 == null) return 1;
-      if (categories1.size() > categories2.size()) return 1;
-      if (categories1.size() < categories2.size()) return -1;
-      String[] array1 = categories1.toArray(new String[0]);
-      String[] array2 = categories2.toArray(new String[0]);
-      Arrays.sort(array1);
-      Arrays.sort(array2);
-      for (int i = 0; i < array1.length; ++i) {
-        int val = array1[i].compareTo(array2[i]);
-        if (val != 0) return val;
-      }
-      return 0;
-    }
-  }
 
   private final Map<String, AndroidManifest> androidManifests = new LinkedHashMap<>();
   private final Map<String, PackageInfo> packageInfos = new LinkedHashMap<>();
-  private Map<Intent, List<ResolveInfo>> resolveInfoForIntent = new TreeMap<>(new IntentComparator());
-  private Map<ComponentName, ComponentState> componentList = new LinkedHashMap<>();
-  private Map<ComponentName, Drawable> drawableList = new LinkedHashMap<>();
-  private Map<String, Drawable> applicationIcons = new HashMap<>();
-  private Map<String, Boolean> systemFeatureList = new LinkedHashMap<>();
-  private Map<IntentFilter, ComponentName> preferredActivities = new LinkedHashMap<>();
-  private Map<Pair<String, Integer>, Drawable> drawables = new LinkedHashMap<>();
+  private final Map<String, PackageStats> packageStatsMap = new HashMap<>();
+  private final Map<Intent, List<ResolveInfo>> resolveInfoForIntent = new TreeMap<>(new IntentComparator());
+  private final Map<ComponentName, ComponentState> componentList = new LinkedHashMap<>();
+  private final Map<ComponentName, Drawable> drawableList = new LinkedHashMap<>();
+  private final Map<String, Drawable> applicationIcons = new HashMap<>();
+  private final Map<String, Boolean> systemFeatureList = new LinkedHashMap<>();
+  private final Map<IntentFilter, ComponentName> preferredActivities = new LinkedHashMap<>();
+  private final Map<Pair<String, Integer>, Drawable> drawables = new LinkedHashMap<>();
+  private final Map<String, Integer> applicationEnabledSettingMap = new HashMap<>();
+  private final Map<Integer, String> namesForUid = new HashMap<>();
+  private final Map<Integer, String[]> packagesForUid = new HashMap<>();
+  private final Map<String, String> packageInstallerMap = new HashMap<>();
   private boolean queryIntentImplicitly = false;
-  private HashMap<String, Integer> applicationEnabledSettingMap = new HashMap<>();
+  private PackageInstaller packageInstaller;
+  private AndroidManifest applicationManifest;
+  private ResourceTable appResourceTable;
 
   @Override
   public PackageInstaller getPackageInstaller() {
-    return new RoboPackageInstaller();
+    if (packageInstaller == null) {
+      packageInstaller = new RoboPackageInstaller();
+    }
+    return packageInstaller;
   }
 
   @Override
@@ -154,7 +146,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
 
     ActivityData activityData = androidManifest.getActivityData(activityName);
     if (activityData != null) {
-      activityInfo.configChanges = activityData.getConfigChanges();
+      activityInfo.configChanges = getConfigChanges(activityData);
       activityInfo.parentActivityName = activityData.getParentActivityName();
       activityInfo.metaData = metaDataToBundle(activityData.getMetaData().getValueMap());
       String themeRef;
@@ -173,6 +165,47 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     return activityInfo;
   }
 
+  private static final List<Pair<String, Integer>> CONFIG_OPTIONS = asList(
+      Pair.create("mcc", ActivityInfo.CONFIG_MCC),
+      Pair.create("mnc", ActivityInfo.CONFIG_MNC),
+      Pair.create("locale", ActivityInfo.CONFIG_LOCALE),
+      Pair.create("touchscreen", ActivityInfo.CONFIG_TOUCHSCREEN),
+      Pair.create("keyboard", ActivityInfo.CONFIG_KEYBOARD),
+      Pair.create("keyboardHidden", ActivityInfo.CONFIG_KEYBOARD_HIDDEN),
+      Pair.create("navigation", ActivityInfo.CONFIG_NAVIGATION),
+      Pair.create("screenLayout", ActivityInfo.CONFIG_SCREEN_LAYOUT),
+      Pair.create("fontScale", ActivityInfo.CONFIG_FONT_SCALE),
+      Pair.create("uiMode", ActivityInfo.CONFIG_UI_MODE),
+      Pair.create("orientation", ActivityInfo.CONFIG_ORIENTATION),
+      Pair.create("screenSize", ActivityInfo.CONFIG_SCREEN_SIZE),
+      Pair.create("smallestScreenSize", ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE)
+  );
+
+  private int getConfigChanges(ActivityData activityData) {
+    String s = activityData.getConfigChanges();
+
+    int res = 0;
+
+    //quick sanity check.
+    if (s == null || "".equals(s)) {
+      return res;
+    }
+
+    String[] pieces = s.split("\\|");
+
+    for(String s1 : pieces) {
+      s1 = s1.trim();
+
+      for (Pair<String, Integer> pair : CONFIG_OPTIONS) {
+        if (s1.equals(pair.first)) {
+          res |= pair.second;
+          break;
+        }
+      }
+    }
+    return res;
+  }
+
   @Override
   public ProviderInfo getProviderInfo(ComponentName className, int flags) throws NameNotFoundException {
     String packageName = className.getPackageName();
@@ -184,7 +217,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
         ProviderInfo providerInfo = new ProviderInfo();
         providerInfo.packageName = packageName;
         providerInfo.name = contentProviderData.getClassName();
-        providerInfo.authority = contentProviderData.getAuthority();
+        providerInfo.authority = contentProviderData.getAuthorities(); // todo: support multiple authorities
         providerInfo.readPermission = contentProviderData.getReadPermission();
         providerInfo.writePermission = contentProviderData.getWritePermission();
         providerInfo.pathPermissions = createPathPermissions(contentProviderData.getPathPermissionDatas());
@@ -311,6 +344,21 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
   }
 
   @Override
+  public ProviderInfo resolveContentProvider(String name, int flags) {
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      if (packageInfo.providers == null) continue;
+
+      for (ProviderInfo providerInfo : packageInfo.providers) {
+        if (name.equals(providerInfo.authority)) { // todo: support multiple authorities
+          return providerInfo;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  @Override
   public void addResolveInfoForIntent(Intent intent, List<ResolveInfo> info) {
     resolveInfoForIntent.put(intent, info);
   }
@@ -372,6 +420,62 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     intent.setClassName(ris.get(0).activityInfo.packageName, ris.get(0).activityInfo.name);
     return intent;
+  }
+
+  @Override
+  public PermissionInfo getPermissionInfo(String name, int flags) throws NameNotFoundException {
+    PermissionItemData permissionItemData = applicationManifest.getPermissions().get(name);
+    if (permissionItemData == null) {
+      throw new NameNotFoundException(name);
+    }
+
+    PermissionInfo permissionInfo = new PermissionInfo();
+    String packageName = applicationManifest.getPackageName();
+    permissionInfo.packageName = packageName;
+    permissionInfo.name = name;
+    permissionInfo.group = permissionItemData.getPermissionGroup();
+    permissionInfo.protectionLevel = decodeProtectionLevel(permissionItemData.getProtectionLevel());
+
+    String descriptionRef = permissionItemData.getDescription();
+    if (descriptionRef != null) {
+      ResName descResName = AttributeResource.getResourceReference(descriptionRef, packageName, "string");
+      permissionInfo.descriptionRes = appResourceTable.getResourceId(descResName);
+    }
+
+    String labelRefOrString = permissionItemData.getLabel();
+    if (labelRefOrString != null) {
+      if (AttributeResource.isResourceReference(labelRefOrString)) {
+        ResName labelResName = AttributeResource.getResourceReference(labelRefOrString, packageName, "string");
+        permissionInfo.labelRes = appResourceTable.getResourceId(labelResName);
+      } else {
+        permissionInfo.nonLocalizedLabel = labelRefOrString;
+      }
+    }
+
+    if ((flags & GET_META_DATA) != 0) {
+      permissionInfo.metaData = metaDataToBundle(permissionItemData.getMetaData().getValueMap());
+    }
+
+    return permissionInfo;
+  }
+
+  private int decodeProtectionLevel(String protectionLevel) {
+    if (protectionLevel == null) {
+      return PermissionInfo.PROTECTION_NORMAL;
+    }
+
+    switch (protectionLevel) {
+      case "normal":
+        return PermissionInfo.PROTECTION_NORMAL;
+      case "dangerous":
+        return PermissionInfo.PROTECTION_DANGEROUS;
+      case "signature":
+        return PermissionInfo.PROTECTION_SIGNATURE;
+      case "signatureOrSystem":
+        return PermissionInfo.PROTECTION_SIGNATURE_OR_SYSTEM;
+      default:
+        throw new IllegalArgumentException("unknown protection level " + protectionLevel);
+    }
   }
 
   @Override
@@ -477,8 +581,25 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
    */
   @Override
   public void addPackage(PackageInfo packageInfo) {
+    addPackage(packageInfo, new PackageStats(packageInfo.packageName));
+  }
+
+  public void addPackage(PackageInfo packageInfo, PackageStats packageStats) {
+    Preconditions.checkArgument(packageInfo.packageName.equals(packageStats.packageName));
+
     packageInfos.put(packageInfo.packageName, packageInfo);
+    packageStatsMap.put(packageInfo.packageName, packageStats);
     applicationEnabledSettingMap.put(packageInfo.packageName, PackageManager.COMPONENT_ENABLED_STATE_DEFAULT);
+
+    if (RuntimeEnvironment.getApiLevel() >= Build.VERSION_CODES.LOLLIPOP) {
+      PackageInstaller.SessionParams sessionParams = new PackageInstaller.SessionParams(0);
+      sessionParams.setAppPackageName(packageInfo.packageName);
+      try {
+        getPackageInstaller().createSession(sessionParams);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -512,7 +633,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
       packageInfo.providers = new ProviderInfo[cpdata.length];
       for (int i = 0; i < cpdata.length; i++) {
         ProviderInfo info = new ProviderInfo();
-        info.authority = cpdata[i].getAuthority();
+        info.authority = cpdata[i].getAuthorities(); // todo: support multiple authorities
         info.name = cpdata[i].getClassName();
         info.packageName = androidManifest.getPackageName();
         packageInfo.providers[i] = info;
@@ -555,7 +676,7 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     }
 
     ApplicationInfo applicationInfo = new ApplicationInfo();
-    applicationInfo.flags = androidManifest.getApplicationFlags();
+    applicationInfo.flags = decodeFlags(androidManifest.getApplicationAttributes());
     applicationInfo.targetSdkVersion = androidManifest.getTargetSdkVersion();
     applicationInfo.packageName = androidManifest.getPackageName();
     applicationInfo.processName = androidManifest.getProcessName();
@@ -576,6 +697,34 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
 
     packageInfo.applicationInfo = applicationInfo;
     addPackage(packageInfo);
+  }
+
+  private static final List<Pair<String, Integer>> APPLICATION_FLAGS = asList(
+      Pair.create("android:allowBackup", FLAG_ALLOW_BACKUP),
+      Pair.create("android:allowClearUserData", FLAG_ALLOW_CLEAR_USER_DATA),
+      Pair.create("android:allowTaskReparenting", FLAG_ALLOW_TASK_REPARENTING),
+      Pair.create("android:debuggable", FLAG_DEBUGGABLE),
+      Pair.create("android:hasCode", FLAG_HAS_CODE),
+      Pair.create("android:killAfterRestore", FLAG_KILL_AFTER_RESTORE),
+      Pair.create("android:persistent", FLAG_PERSISTENT),
+      Pair.create("android:resizeable", FLAG_RESIZEABLE_FOR_SCREENS),
+      Pair.create("android:restoreAnyVersion", FLAG_RESTORE_ANY_VERSION),
+      Pair.create("android:largeScreens", FLAG_SUPPORTS_LARGE_SCREENS),
+      Pair.create("android:normalScreens", FLAG_SUPPORTS_NORMAL_SCREENS),
+      Pair.create("android:anyDensity", FLAG_SUPPORTS_SCREEN_DENSITIES),
+      Pair.create("android:smallScreens", FLAG_SUPPORTS_SMALL_SCREENS),
+      Pair.create("android:testOnly", FLAG_TEST_ONLY),
+      Pair.create("android:vmSafeMode", FLAG_VM_SAFE_MODE)
+  );
+
+  private int decodeFlags(Map<String, String> applicationAttributes) {
+    int applicationFlags = 0;
+    for (Pair<String, Integer> pair : APPLICATION_FLAGS) {
+      if ("true".equals(applicationAttributes.get(pair.first))) {
+        applicationFlags |= pair.second;
+      }
+    }
+    return applicationFlags;
   }
 
   @Override
@@ -773,17 +922,44 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     return namesForUid.get(uid);
   }
 
+  @Override
+  public List<ApplicationInfo> getInstalledApplications(int flags) {
+    List<ApplicationInfo> result = new LinkedList<>();
+
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      result.add(packageInfo.applicationInfo);
+    }
+    return result;
+  }
+
   public void setPackagesForCallingUid(String... packagesForCallingUid) {
     setPackagesForUid(Binder.getCallingUid(), packagesForCallingUid);
   }
 
+  /**
+   * Override value returned by {@link #getPackagesForUid(int)}.
+   */
   public void setPackagesForUid(int uid, String... packagesForCallingUid) {
     this.packagesForUid.put(uid, packagesForCallingUid);
   }
 
   @Override
   public String[] getPackagesForUid(int uid) {
-    return packagesForUid.get(uid);
+    String[] packageNames = packagesForUid.get(uid);
+    if (packageNames != null) {
+      return packageNames;
+    }
+
+    Set<String> results = new HashSet<>();
+    for (PackageInfo packageInfo : packageInfos.values()) {
+      if (packageInfo.applicationInfo != null && packageInfo.applicationInfo.uid == uid) {
+        results.add(packageInfo.packageName);
+      }
+    }
+
+    return results.isEmpty()
+        ? null
+        :results.toArray(new String[results.size()]);
   }
 
   /**
@@ -816,25 +992,168 @@ public class DefaultPackageManager extends StubPackageManager implements Robolec
     return bundle;
   }
 
+  @Override
+  public void getPackageSizeInfo(String pkgName, int uid, final IPackageStatsObserver callback) {
+    final PackageStats packageStats = packageStatsMap.get(pkgName);
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          callback.onGetStatsCompleted(packageStats, packageStats != null);
+        } catch (RemoteException remoteException) {
+          remoteException.rethrowFromSystemServer();
+        }
+      }
+    });
+  }
+
+  @Override
+  public int checkSignatures(String packageName1, String packageName2) {
+    try {
+      PackageInfo packageInfo1 = getPackageInfo(packageName1, GET_SIGNATURES);
+      PackageInfo packageInfo2 = getPackageInfo(packageName2, GET_SIGNATURES);
+      return compareSignature(packageInfo1.signatures, packageInfo2.signatures);
+    } catch (NameNotFoundException e) {
+      return SIGNATURE_UNKNOWN_PACKAGE;
+    }
+  }
+
+  // From com.android.server.pm.PackageManagerService.compareSignatures().
+  private static int compareSignature(Signature[] signatures1, Signature[] signatures2) {
+    if (signatures1 == null) {
+      return (signatures2 == null) ? SIGNATURE_NEITHER_SIGNED
+          : SIGNATURE_FIRST_NOT_SIGNED;
+    }
+    if (signatures2 == null) {
+      return SIGNATURE_SECOND_NOT_SIGNED;
+    }
+    if (signatures1.length != signatures2.length) {
+      return SIGNATURE_NO_MATCH;
+    }
+    HashSet<Signature> signatures1set = new HashSet<>(Arrays.asList(signatures1));
+    HashSet<Signature> signatures2set = new HashSet<>(Arrays.asList(signatures2));
+    return signatures1set.equals(signatures2set) ? SIGNATURE_MATCH : SIGNATURE_NO_MATCH;
+  }
+
+  @Override
+  public String getInstallerPackageName(String packageName) {
+    return packageInstallerMap.get(packageName);
+  }
+
+  @Override
+  public void setInstallerPackageName(String targetPackage, String installerPackageName) {
+    packageInstallerMap.put(targetPackage, installerPackageName);
+  }
+
+  public void setDependencies(AndroidManifest applicationManifest, ResourceTable appResourceTable) {
+    this.applicationManifest = applicationManifest;
+    this.appResourceTable = appResourceTable;
+  }
+
   private class RoboPackageInstaller extends PackageInstaller {
+    private int nextSessionId;
+    private Map<Integer, PackageInstaller.SessionInfo> sessionInfos = new HashMap<>();
+    private Set<CallbackInfo> callbackInfos = new HashSet<>();
+
+    private class CallbackInfo {
+      PackageInstaller.SessionCallback callback;
+      Handler handler;
+    }
+
     public RoboPackageInstaller() {
       super(RuntimeEnvironment.application, DefaultPackageManager.this, null, null, -1);
     }
 
     @Override
     public List<SessionInfo> getAllSessions() {
-      return ImmutableList.copyOf(Iterables.transform(packageInfos.keySet(), packageNameToSessionInfo()));
+      List<SessionInfo> sessionInfos = new LinkedList<>();
+      for (String packageName : packageInfos.keySet()) {
+        SessionInfo sessionInfo = new SessionInfo();
+        sessionInfo.appPackageName = packageName;
+        sessionInfos.add(sessionInfo);
+      }
+
+      return ImmutableList.copyOf(sessionInfos);
     }
 
-    private Function<String, PackageInstaller.SessionInfo> packageNameToSessionInfo() {
-      return new Function<String, PackageInstaller.SessionInfo>() {
-        @Override
-        public PackageInstaller.SessionInfo apply(String packageName) {
-          PackageInstaller.SessionInfo sessionInfo = new PackageInstaller.SessionInfo();
-          sessionInfo.appPackageName = packageName;
-          return sessionInfo;
+    public int createSession(PackageInstaller.SessionParams params) throws IOException {
+      final PackageInstaller.SessionInfo sessionInfo = new PackageInstaller.SessionInfo();
+      sessionInfo.sessionId = nextSessionId++;
+      sessionInfo.appPackageName = params.appPackageName;
+      sessionInfos.put(sessionInfo.getSessionId(), sessionInfo);
+
+      for (final CallbackInfo callbackInfo : callbackInfos) {
+        callbackInfo.handler.post(new Runnable() {
+          @Override
+          public void run() {
+            callbackInfo.callback.onCreated(sessionInfo.sessionId);
+          }
+        });
+      }
+
+      return sessionInfo.sessionId;
+    }
+  }
+
+  public static class IntentComparator implements Comparator<Intent> {
+
+    @Override
+    public int compare(Intent i1, Intent i2) {
+      if (i1 == null && i2 == null) return 0;
+      if (i1 == null && i2 != null) return -1;
+      if (i1 != null && i2 == null) return 1;
+      if (i1.equals(i2)) return 0;
+      String action1 = i1.getAction();
+      String action2 = i2.getAction();
+      if (action1 == null && action2 != null) return -1;
+      if (action1 != null && action2 == null) return 1;
+      if (action1 != null && action2 != null) {
+        if (!action1.equals(action2)) {
+          return action1.compareTo(action2);
         }
-      };
+      }
+      Uri data1 = i1.getData();
+      Uri data2 = i2.getData();
+      if (data1 == null && data2 != null) return -1;
+      if (data1 != null && data2 == null) return 1;
+      if (data1 != null && data2 != null) {
+        if (!data1.equals(data2)) {
+          return data1.compareTo(data2);
+        }
+      }
+      ComponentName component1 = i1.getComponent();
+      ComponentName component2 = i2.getComponent();
+      if (component1 == null && component2 != null) return -1;
+      if (component1 != null && component2 == null) return 1;
+      if (component1 != null && component2 != null) {
+        if (!component1.equals(component2)) {
+          return component1.compareTo(component2);
+        }
+      }
+      String package1 = i1.getPackage();
+      String package2 = i2.getPackage();
+      if (package1 == null && package2 != null) return -1;
+      if (package1 != null && package2 == null) return 1;
+      if (package1 != null && package2 != null) {
+        if (!package1.equals(package2)) {
+          return package1.compareTo(package2);
+        }
+      }
+      Set<String> categories1 = i1.getCategories();
+      Set<String> categories2 = i2.getCategories();
+      if (categories1 == null) return categories2 == null ? 0 : -1;
+      if (categories2 == null) return 1;
+      if (categories1.size() > categories2.size()) return 1;
+      if (categories1.size() < categories2.size()) return -1;
+      String[] array1 = categories1.toArray(new String[0]);
+      String[] array2 = categories2.toArray(new String[0]);
+      Arrays.sort(array1);
+      Arrays.sort(array2);
+      for (int i = 0; i < array1.length; ++i) {
+        int val = array1[i].compareTo(array2[i]);
+        if (val != 0) return val;
+      }
+      return 0;
     }
   }
 }

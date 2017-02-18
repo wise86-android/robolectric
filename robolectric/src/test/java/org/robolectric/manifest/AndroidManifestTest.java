@@ -31,10 +31,26 @@ public class AndroidManifestTest {
     AndroidManifest config = newConfig("TestAndroidManifestWithContentProviders.xml");
 
     assertThat(config.getContentProviders().get(0).getClassName()).isEqualTo("org.robolectric.tester.FullyQualifiedClassName");
-    assertThat(config.getContentProviders().get(0).getAuthority()).isEqualTo("org.robolectric.authority1");
+    assertThat(config.getContentProviders().get(0).getAuthorities()).isEqualTo("org.robolectric.authority1");
 
     assertThat(config.getContentProviders().get(1).getClassName()).isEqualTo("org.robolectric.tester.PartiallyQualifiedClassName");
-    assertThat(config.getContentProviders().get(1).getAuthority()).isEqualTo("org.robolectric.authority2");
+    assertThat(config.getContentProviders().get(1).getAuthorities()).isEqualTo("org.robolectric.authority2");
+  }
+
+  @Test
+  public void parseManifest_shouldReadPermissions() throws Exception {
+    AndroidManifest config = newConfig("TestAndroidManifestWithPermissions.xml");
+
+    assertThat(config.getPermissions().keySet())
+        .containsExactlyInAnyOrder("some_permission",
+            "permission_with_literal_label",
+            "permission_with_minimal_fields");
+    PermissionItemData permissionItemData = config.getPermissions().get("some_permission");
+    assertThat(permissionItemData.getMetaData().getValueMap()).containsEntry("meta_data_name", "meta_data_value");
+    assertThat(permissionItemData.getName()).isEqualTo("some_permission");
+    assertThat(permissionItemData.getPermissionGroup()).isEqualTo("my_permission_group");
+    assertThat(permissionItemData.getDescription()).isEqualTo("@string/test_permission_description");
+    assertThat(permissionItemData.getProtectionLevel()).isEqualTo("dangerous");
   }
 
   @Test
@@ -370,23 +386,9 @@ public class AndroidManifestTest {
   }
 
   @Test
-  public void shouldReadFlagsFromAndroidManifest() throws Exception {
+  public void shouldReadApplicationAttrsFromAndroidManifest() throws Exception {
     AndroidManifest config = newConfig("TestAndroidManifestWithFlags.xml");
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_ALLOW_BACKUP));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_ALLOW_CLEAR_USER_DATA));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_ALLOW_TASK_REPARENTING));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_DEBUGGABLE));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_HAS_CODE));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_KILL_AFTER_RESTORE));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_PERSISTENT));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_RESIZEABLE_FOR_SCREENS));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_RESTORE_ANY_VERSION));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_SUPPORTS_LARGE_SCREENS));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_SUPPORTS_NORMAL_SCREENS));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_SUPPORTS_SCREEN_DENSITIES));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_SUPPORTS_SMALL_SCREENS));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_TEST_ONLY));
-    assertTrue(hasFlag(config.getApplicationFlags(), FLAG_VM_SAFE_MODE));
+    assertThat(config.getApplicationAttributes().get("android:allowBackup")).isEqualTo("true");
   }
 
   /////////////////////////////
