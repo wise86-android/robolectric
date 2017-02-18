@@ -160,4 +160,12 @@ public class ShadowBluetoothAdapter {
   public void setEnabled(boolean enabled) {
     this.enabled = enabled;
   }
+
+  public void discoverDevice(BluetoothDevice device, int rssi, byte advertise[]){
+    for(LeScanCallback callback : leScanCallbacks){
+      callback.onLeScan(device,rssi,advertise);
+    }
+
+  }
+
 }

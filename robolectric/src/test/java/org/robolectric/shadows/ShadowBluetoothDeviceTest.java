@@ -1,6 +1,10 @@
 package org.robolectric.shadows;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.content.Context;
+import android.renderscript.ProgramStore;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +18,7 @@ import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_UNKNOWN;
 import static android.os.Build.VERSION_CODES.ECLAIR;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(TestRunners.MultiApiSelfTest.class)
@@ -69,4 +74,19 @@ public class ShadowBluetoothDeviceTest {
         shadowBluetoothDevice.setDeviceType(deviceType);
         assertThat(bluetoothDevice.getType()).isEqualTo(DEVICE_TYPE_UNKNOWN);
     }
+
+    /*
+    @Test
+    @Config(minSdk = JELLY_BEAN_MR2)
+    public void createGattConnectionReturnAGattConnectionWithTheDevice(){
+        BluetoothGattCallback callback = mock(BluetoothGattCallback.class);
+        Context context = mock(Context.class);
+        BluetoothGatt connection = bluetoothDevice.connectGatt(context,false,callback);
+
+        assertThat(connection.getDevice()).isEqualTo(bluetoothDevice);
+
+    }
+    */
+
+
 }

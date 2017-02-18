@@ -14,6 +14,8 @@ import org.robolectric.shadow.api.Shadow;
 
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(TestRunners.MultiApiSelfTest.class)
@@ -93,7 +95,25 @@ public class ShadowBluetoothAdapterTest {
     shadowBluetoothAdapter.getSingleLeScanCallback();
   }
 
-  private BluetoothAdapter.LeScanCallback newLeScanCallback() {
+  @Test
+  @Config(minSdk = JELLY_BEAN_MR2)
+  public void testLeCallbackIsCalledWhenDeviceIsDiscovered() {
+
+    BluetoothAdapter.LeScanCallback callback = mock(BluetoothAdapter.LeScanCallback.class);
+
+    bluetoothAdapter.startLeScan(callback);
+
+    final BluetoothDevice fakeDevice = Shadow.newInstanceOf(BluetoothDevice.class);
+    final int deviceRssi = 123;
+    final byte advertise[] = {0x00,0x01,0x02,0x03,0x04};
+    shadowBluetoothAdapter.discoverDevice(fakeDevice,deviceRssi,advertise);
+
+    verify(callback).onLeScan(fakeDevice,deviceRssi,advertise);
+
+  }
+
+
+    private BluetoothAdapter.LeScanCallback newLeScanCallback() {
     return new BluetoothAdapter.LeScanCallback() {
       @Override
       public void onLeScan(BluetoothDevice bluetoothDevice, int i, byte[] bytes) {}

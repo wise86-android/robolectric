@@ -1,13 +1,20 @@
 package org.robolectric.shadows;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.content.Context;
+
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
+import org.robolectric.annotation.RealObject;
+import org.robolectric.shadow.api.Shadow;
 
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_CLASSIC;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_DUAL;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_LE;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_UNKNOWN;
+import static org.robolectric.Shadows.shadowOf;
 
 /**
  * Shadow for {@link android.bluetooth.BluetoothDevice}.
@@ -15,6 +22,7 @@ import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_UNKNOWN;
 @Implements(BluetoothDevice.class)
 public class ShadowBluetoothDevice {
 
+    @RealObject BluetoothDevice realDevice;
   private String name;
   private String address;
 
@@ -46,5 +54,19 @@ public class ShadowBluetoothDevice {
 
     @Implementation
     public  int getType(){return deviceType;}
+
+
+  @Implementation
+  public BluetoothGatt connectGatt(Context context, boolean autoConnect, BluetoothGattCallback callback){
+      if(callback==null)
+          throw new IllegalArgumentException("Callback can not be null");
+
+      BluetoothGatt gatt = Shadow.newInstanceOf(BluetoothGatt.class);
+      ShadowBluetoothGatt gattShadow = shadowOf(gatt);
+      gattShadow.setCallback(callback);
+      gattShadow.setDevice(realDevice);
+      return gatt;
+  }
+
 
 }
